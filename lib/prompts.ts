@@ -23,17 +23,17 @@ Return ONLY valid JSON:
       "rating": 4.5,
       "reviewCount": 500,
       "image": "/gift.jpg",
-      "shopUrl": "https://www.amazon.com/dp/B0ABCDEFGH",
+      "shopUrl": "https://www.etsy.com/listing/product-name",
       "category": "Category",
       "tags": ["thoughtful"]
     }
   ]
 }
 
-CRITICAL: Use ONLY real, existing Amazon product URLs with valid ASINs. Research actual products that match the preferences.`
+Use diverse shopping platforms: Amazon, Target, Walmart, Best Buy, Etsy, brand websites, specialty stores, etc. Match products to preferences from various retailers.`
 
 export const POPULAR_GIFTS_PROMPT = () => `
-Generate 4 popular trending gifts that actually exist on Amazon. Return ONLY valid JSON with NO extra text:
+Generate 4 popular trending gifts from various online retailers. Return ONLY valid JSON with NO extra text:
 
 {
   "gifts": [
@@ -45,17 +45,17 @@ Generate 4 popular trending gifts that actually exist on Amazon. Return ONLY val
       "rating": 4.5,
       "reviewCount": 1000,
       "image": "/gift.jpg",
-      "shopUrl": "https://www.amazon.com/dp/B0ABCDEFGH",
+      "shopUrl": "https://www.target.com/p/product-name",
       "category": "Electronics",
       "tags": ["trending"]
     }
   ]
 }
 
-CRITICAL: Use ONLY real, existing Amazon product URLs with valid ASINs (B0XXXXXXXX format). Research actual popular products on Amazon. Price range $20-$100.`
+Use diverse shopping platforms: Amazon, Target, Walmart, Best Buy, brand official websites, Etsy, etc. Include real product URLs from different retailers. Price range $20-$100.`
 
 export const OCCASION_GIFTS_PROMPT = (occasion: string) => `
-Generate 4 ${occasion} gifts that actually exist on Amazon. Return ONLY valid JSON:
+Generate 4 ${occasion} gifts from various online retailers. Return ONLY valid JSON:
 
 {
   "gifts": [
@@ -67,11 +67,11 @@ Generate 4 ${occasion} gifts that actually exist on Amazon. Return ONLY valid JS
       "rating": 4.6,
       "reviewCount": 800,
       "image": "/gift.jpg",
-      "shopUrl": "https://www.amazon.com/dp/B0ABCDEFGH",
+      "shopUrl": "https://www.walmart.com/ip/product-name",
       "category": "Category",
       "tags": ["${occasion.toLowerCase()}"]
     }
   ]
 }
 
-CRITICAL: Use ONLY real, existing Amazon product URLs with valid ASINs. Research actual products suitable for ${occasion}. Price $20-$100.`
+Use diverse shopping platforms for ${occasion}: Amazon, Target, Walmart, Best Buy, Etsy, brand official sites, specialty gift stores, etc. Price $20-$100.`
