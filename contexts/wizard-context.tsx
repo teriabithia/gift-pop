@@ -7,6 +7,7 @@ interface WizardContextType {
   data: WizardData
   updateData: (updates: Partial<WizardData>) => void
   resetData: () => void
+  clearData: () => void
 }
 
 const WizardContext = createContext<WizardContextType | undefined>(undefined)
@@ -31,7 +32,11 @@ export function WizardProvider({ children }: { children: ReactNode }) {
     setData(initialData)
   }
 
-  return <WizardContext.Provider value={{ data, updateData, resetData }}>{children}</WizardContext.Provider>
+  const clearData = () => {
+    setData(initialData)
+  }
+
+  return <WizardContext.Provider value={{ data, updateData, resetData, clearData }}>{children}</WizardContext.Provider>
 }
 
 export function useWizard() {

@@ -14,6 +14,7 @@ export interface GiftList {
   updatedAt: Date
   isPublic: boolean
   shareId?: string
+  specialPreferences?: string
 }
 
 export interface Gift {
@@ -26,6 +27,7 @@ export interface Gift {
   image: string
   shopUrl: string
   category?: string
+  tags?: string[] | string // 支持数组或JSON字符串格式
 }
 
 export interface WizardData {

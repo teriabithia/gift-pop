@@ -71,7 +71,7 @@ export function Navigation() {
                   <DropdownMenuContent align="end" className="w-48 rounded-2xl border-gray-100 shadow-lg">
                     <DropdownMenuItem
                       onClick={logout}
-                      className="flex items-center gap-3 p-3 rounded-xl text-gray-700 hover:bg-gray-50"
+                      className="flex items-center gap-3 p-3 rounded-xl text-gray-700 hover:bg-gray-100 hover:text-gray-900 focus:bg-gray-100 focus:text-gray-900"
                     >
                       <LogOut className="h-4 w-4" />
                       Logout

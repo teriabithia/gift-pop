@@ -23,7 +23,7 @@ import { useAuth } from "@/contexts/auth-context"
 import { useLists } from "@/contexts/lists-context"
 import { useToast } from "@/hooks/use-toast"
 import { formatDistanceToNow } from "date-fns"
-import { ShareModal } from "@/components/share-modal"
+
 
 export default function ListDetailPage() {
   const router = useRouter()
@@ -38,7 +38,7 @@ export default function ListDetailPage() {
   const [isEditing, setIsEditing] = useState(false)
   const [notes, setNotes] = useState(list?.specialPreferences || "")
   const [removingGift, setRemovingGift] = useState<string | null>(null)
-  const [showShareModal, setShowShareModal] = useState(false)
+
 
   // Redirect if not logged in or list not found
   if (!user) {
@@ -73,7 +73,15 @@ export default function ListDetailPage() {
   }
 
   const handleShare = () => {
-    setShowShareModal(true)
+    if (!list) return
+    
+    // 直接生成分享链接，不显示模态框
+    const shareLink = generateShareLink(list.id)
+    navigator.clipboard.writeText(shareLink)
+    toast({
+      title: "Link copied!",
+      description: "Share link has been copied to your clipboard.",
+    })
   }
 
   const handleGenerateShareLink = (listId: string) => {
@@ -177,7 +185,7 @@ export default function ListDetailPage() {
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <h2 className="text-2xl font-semibold">Gifts in this list</h2>
-            <Link href="/recommendations">
+            <Link href="/popular">
               <Button variant="outline">
                 <Plus className="h-4 w-4 mr-2" />
                 Add More Gifts
@@ -248,7 +256,7 @@ export default function ListDetailPage() {
                 <CardDescription>Start adding gifts to organize your ideas for this occasion.</CardDescription>
               </CardHeader>
               <CardContent>
-                <Link href="/recommendations">
+                <Link href="/popular">
                   <Button>
                     <Plus className="h-4 w-4 mr-2" />
                     Find Gifts to Add
@@ -259,13 +267,7 @@ export default function ListDetailPage() {
           )}
         </div>
 
-        {/* Share Modal */}
-        <ShareModal
-          open={showShareModal}
-          onOpenChange={setShowShareModal}
-          lists={[list]}
-          onGenerateLink={handleGenerateShareLink}
-        />
+
 
         {/* Remove Gift Confirmation Dialog */}
         <AlertDialog open={!!removingGift} onOpenChange={() => setRemovingGift(null)}>

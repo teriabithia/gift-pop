@@ -9,7 +9,7 @@ interface ListsContextType {
   createList: (name: string) => GiftList
   updateList: (listId: string, updates: Partial<GiftList>) => void
   deleteList: (listId: string) => void
-  addGiftToList: (listId: string, gift: Gift) => void
+  addGiftToList: (listId: string, gift: Gift) => { success: boolean; message: string; listName: string }
   removeGiftFromList: (listId: string, giftId: string) => void
   getListById: (listId: string) => GiftList | undefined
   generateShareLink: (listId: string) => string
@@ -33,6 +33,7 @@ export function ListsProvider({ children }: { children: ReactNode }) {
           createdAt: new Date("2024-01-15"),
           updatedAt: new Date("2024-01-15"),
           isPublic: false,
+          specialPreferences: "",
         },
         {
           id: "2",
@@ -43,6 +44,7 @@ export function ListsProvider({ children }: { children: ReactNode }) {
           updatedAt: new Date("2024-01-20"),
           isPublic: true,
           shareId: "abc123",
+          specialPreferences: "",
         },
       ])
     } else {
@@ -61,6 +63,7 @@ export function ListsProvider({ children }: { children: ReactNode }) {
       createdAt: new Date(),
       updatedAt: new Date(),
       isPublic: false,
+      specialPreferences: "",
     }
 
     setLists((prev) => [...prev, newList])
@@ -76,11 +79,34 @@ export function ListsProvider({ children }: { children: ReactNode }) {
   }
 
   const addGiftToList = (listId: string, gift: Gift) => {
+    const list = lists.find((l) => l.id === listId)
+    if (!list) {
+      return { success: false, message: "List not found", listName: "" }
+    }
+
+    // 检查商品是否已存在于该清单中
+    const isGiftInList = list.gifts.some(listGift => listGift.id === gift.id)
+    
+    if (isGiftInList) {
+      return { 
+        success: false, 
+        message: `"${gift.name}" 已存在于 "${list.name}" 中。`, 
+        listName: list.name 
+      }
+    }
+
+    // 添加商品到清单
     setLists((prev) =>
-      prev.map((list) =>
-        list.id === listId ? { ...list, gifts: [...list.gifts, gift], updatedAt: new Date() } : list,
+      prev.map((l) =>
+        l.id === listId ? { ...l, gifts: [...l.gifts, gift], updatedAt: new Date() } : l,
       ),
     )
+
+    return { 
+      success: true, 
+      message: `"${gift.name}" has been added to "${list.name}".`, 
+      listName: list.name 
+    }
   }
 
   const removeGiftFromList = (listId: string, giftId: string) => {

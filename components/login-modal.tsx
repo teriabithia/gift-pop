@@ -107,7 +107,7 @@ export function LoginModal({ open, onOpenChange, onLoginSuccess }: LoginModalPro
   if (showForgotPassword) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-sm rounded-3xl border-gray-100 shadow-[0_25px_50px_rgba(0,0,0,0.25)] p-4">
+        <DialogContent className="sm:max-w-sm rounded-2xl border-gray-100 shadow-[0_25px_50px_rgba(0,0,0,0.25)] p-8">
           <DialogHeader className="text-center pb-2">
             <DialogTitle className="text-lg font-bold text-gray-900">Reset Password</DialogTitle>
             <DialogDescription className="text-sm text-gray-600">
@@ -154,7 +154,7 @@ export function LoginModal({ open, onOpenChange, onLoginSuccess }: LoginModalPro
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-sm border-gray-100 shadow-[0_25px_50px_rgba(0,0,0,0.25)] p-4 rounded-lg">
+      <DialogContent className="sm:max-w-sm rounded-2xl border-gray-100 shadow-[0_25px_50px_rgba(0,0,0,0.25)] p-8">
         <DialogHeader className="text-center pb-2">
           <DialogTitle className="text-xl font-bold text-gray-900">Welcome to GiftPop</DialogTitle>
           <DialogDescription className="text-sm text-gray-600">

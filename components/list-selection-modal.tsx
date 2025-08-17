@@ -31,14 +31,6 @@ export function ListSelectionModal({
   const handleAddToList = (listId: string) => {
     onAddToList(listId, gift)
     onOpenChange(false)
-
-    const selectedList = lists.find((list) => list.id === listId)
-    if (gift && selectedList) {
-      toast({
-        title: "Added to list!",
-        description: `"${gift.name}" has been added to "${selectedList.name}".`,
-      })
-    }
   }
 
   const handleCreateNewList = () => {
@@ -55,7 +47,7 @@ export function ListSelectionModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md p-6">
+      <DialogContent className="sm:max-w-md rounded-2xl border-gray-100 shadow-[0_25px_50px_rgba(0,0,0,0.25)] p-6">
         <DialogHeader className="pb-4">
           <DialogTitle className="text-xl font-bold">Add to List</DialogTitle>
         </DialogHeader>

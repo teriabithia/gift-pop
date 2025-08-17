@@ -1,0 +1,1320 @@
+openapi: 3.0.3
+info:
+  title: GiftPop API
+  description: |
+    GiftPop 礼品推荐平台 API 规范
+    
+    ## 版本策略
+    - 当前版本: v1
+    - 向后兼容: 新增字段不破坏现有客户端
+    - 废弃策略: 提前6个月通知，保留12个月支持
+    
+    ## 认证
+    使用 NextAuth.js 会话认证，通过 Cookie 传递会话令牌
+    
+    ## 错误处理
+    统一错误响应格式，包含错误码、消息和详细信息
+    
+    ## 限流
+    - 匿名用户: 100 req/min
+    - 认证用户: 1000 req/min
+    - 管理员: 无限制
+  version: 1.0.0
+  contact:
+    name: GiftPop Team
+    email: api@giftpop.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: https://api.giftpop.com/v1
+    description: 生产环境
+  - url: https://staging-api.giftpop.com/v1
+    description: 测试环境
+  - url: http://localhost:3000/api/v1
+    description: 开发环境
+
+paths:
+  # 认证相关
+  /auth/session:
+    get:
+      summary: 获取当前会话信息
+      tags: [Authentication]
+      responses:
+        '200':
+          description: 会话信息
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/signin:
+    post:
+      summary: 用户登录
+      tags: [Authentication]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignInRequest'
+      responses:
+        '200':
+          description: 登录成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/signup:
+    post:
+      summary: 用户注册
+      tags: [Authentication]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignUpRequest'
+      responses:
+        '201':
+          description: 注册成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  # 问答相关
+  /quiz/submit:
+    post:
+      summary: 提交问答答案
+      tags: [Quiz]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuizSubmissionRequest'
+      responses:
+        '201':
+          description: 问答提交成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuizSubmissionResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  # 推荐相关
+  /recommendations:
+    get:
+      summary: 获取个性化推荐
+      tags: [Recommendations]
+      parameters:
+        - name: quiz_id
+          in: query
+          required: true
+          schema:
+            type: string
+          description: 问答记录ID
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+          description: 返回数量限制
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+          description: 分页偏移量
+      responses:
+        '200':
+          description: 推荐结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RecommendationsResponse'
+          headers:
+            X-RateLimit-Limit:
+              schema:
+                type: integer
+              description: 请求限制数量
+            X-RateLimit-Remaining:
+              schema:
+                type: integer
+              description: 剩余请求数量
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # 礼品相关
+  /gifts:
+    get:
+      summary: 获取礼品列表
+      tags: [Gifts]
+      parameters:
+        - name: category
+          in: query
+          schema:
+            type: string
+          description: 礼品分类筛选
+        - name: price_min
+          in: query
+          schema:
+            type: number
+            format: decimal
+          description: 最低价格
+        - name: price_max
+          in: query
+          schema:
+            type: number
+            format: decimal
+          description: 最高价格
+        - name: rating_min
+          in: query
+          schema:
+            type: number
+            format: float
+            minimum: 0
+            maximum: 5
+          description: 最低评分
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum: [popularity, price_asc, price_desc, rating, newest]
+            default: popularity
+          description: 排序方式
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: 礼品列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GiftsResponse'
+
+  /gifts/{giftId}:
+    get:
+      summary: 获取礼品详情
+      tags: [Gifts]
+      parameters:
+        - name: giftId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 礼品ID
+      responses:
+        '200':
+          description: 礼品详情
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Gift'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # 热门礼品
+  /popular:
+    get:
+      summary: 获取热门礼品
+      tags: [Popular]
+      parameters:
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [day, week, month, all]
+            default: week
+          description: 统计周期
+        - name: category
+          in: query
+          schema:
+            type: string
+          description: 分类筛选
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+      responses:
+        '200':
+          description: 热门礼品列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PopularGiftsResponse'
+
+  # 场景礼品
+  /occasions:
+    get:
+      summary: 获取场景分类
+      tags: [Occasions]
+      responses:
+        '200':
+          description: 场景分类列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OccasionsResponse'
+
+  /occasions/{occasionId}/gifts:
+    get:
+      summary: 获取特定场景的礼品
+      tags: [Occasions]
+      parameters:
+        - name: occasionId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 场景ID
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: 场景礼品列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GiftsResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # 清单相关
+  /lists:
+    get:
+      summary: 获取用户清单列表
+      tags: [Lists]
+      security:
+        - sessionAuth: []
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: 清单列表
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListsResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    post:
+      summary: 创建新清单
+      tags: [Lists]
+      security:
+        - sessionAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateListRequest'
+      responses:
+        '201':
+          description: 清单创建成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GiftList'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /lists/{listId}:
+    get:
+      summary: 获取清单详情
+      tags: [Lists]
+      security:
+        - sessionAuth: []
+      parameters:
+        - name: listId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: 清单详情
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GiftListDetails'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      summary: 更新清单信息
+      tags: [Lists]
+      security:
+        - sessionAuth: []
+      parameters:
+        - name: listId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateListRequest'
+      responses:
+        '200':
+          description: 清单更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GiftList'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      summary: 删除清单
+      tags: [Lists]
+      security:
+        - sessionAuth: []
+      parameters:
+        - name: listId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: 清单删除成功
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # 清单项目相关
+  /lists/{listId}/items:
+    post:
+      summary: 添加礼品到清单
+      tags: [List Items]
+      security:
+        - sessionAuth: []
+      parameters:
+        - name: listId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddListItemRequest'
+      responses:
+        '201':
+          description: 礼品添加成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListItem'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /lists/{listId}/items/{itemId}:
+    put:
+      summary: 更新清单项目
+      tags: [List Items]
+      security:
+        - sessionAuth: []
+      parameters:
+        - name: listId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateListItemRequest'
+      responses:
+        '200':
+          description: 项目更新成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListItem'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      summary: 从清单移除礼品
+      tags: [List Items]
+      security:
+        - sessionAuth: []
+      parameters:
+        - name: listId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: 项目删除成功
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # 分享链接相关
+  /share-links:
+    post:
+      summary: 创建分享链接
+      tags: [Share Links]
+      security:
+        - sessionAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateShareLinkRequest'
+      responses:
+        '201':
+          description: 分享链接创建成功
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ShareLinkResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /share-links/{token}:
+    get:
+      summary: 通过分享令牌访问清单
+      tags: [Share Links]
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+          description: 分享令牌
+      responses:
+        '200':
+          description: 分享的清单内容
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SharedListResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '410':
+          description: 分享链接已过期
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    delete:
+      summary: 撤销分享链接
+      tags: [Share Links]
+      security:
+        - sessionAuth: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: 分享链接撤销成功
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  securitySchemes:
+    sessionAuth:
+      type: apiKey
+      in: cookie
+      name: next-auth.session-token
+      description: NextAuth.js 会话 Cookie
+
+  schemas:
+    # 基础模型
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          description: 用户ID
+        email:
+          type: string
+          format: email
+          description: 邮箱地址
+        name:
+          type: string
+          description: 用户姓名
+        avatar:
+          type: string
+          format: uri
+          description: 头像URL
+        createdAt:
+          type: string
+          format: date-time
+          description: 创建时间
+      required: [id, email, name]
+
+    Gift:
+      type: object
+      properties:
+        id:
+          type: string
+          description: 礼品ID
+        name:
+          type: string
+          description: 礼品名称
+        brand:
+          type: string
+          description: 品牌
+        price:
+          type: number
+          format: decimal
+          description: 价格
+        rating:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 5
+          description: 评分
+        reviewCount:
+          type: integer
+          minimum: 0
+          description: 评论数量
+        image:
+          type: string
+          format: uri
+          description: 图片URL
+        shopUrl:
+          type: string
+          format: uri
+          description: 购买链接
+        category:
+          type: string
+          description: 分类
+        description:
+          type: string
+          description: 描述
+        tags:
+          type: array
+          items:
+            type: string
+          description: 标签列表
+        occasions:
+          type: array
+          items:
+            type: string
+          description: 适用场景
+        targetDemographics:
+          type: object
+          description: 目标人群
+        popularityScore:
+          type: number
+          format: float
+          description: 热度分数
+        isActive:
+          type: boolean
+          description: 是否激活
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required: [id, name, brand, price, rating, reviewCount, image, shopUrl]
+
+    GiftList:
+      type: object
+      properties:
+        id:
+          type: string
+          description: 清单ID
+        name:
+          type: string
+          description: 清单名称
+        userId:
+          type: string
+          description: 用户ID
+        description:
+          type: string
+          description: 描述
+        isPublic:
+          type: boolean
+          description: 是否公开
+        shareToken:
+          type: string
+          description: 分享令牌
+        shareExpiresAt:
+          type: string
+          format: date-time
+          description: 分享过期时间
+        metadata:
+          type: object
+          description: 元数据
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required: [id, name, userId, isPublic]
+
+    GiftListDetails:
+      allOf:
+        - $ref: '#/components/schemas/GiftList'
+        - type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/ListItem'
+            user:
+              $ref: '#/components/schemas/User'
+
+    ListItem:
+      type: object
+      properties:
+        id:
+          type: string
+          description: 项目ID
+        listId:
+          type: string
+          description: 清单ID
+        giftId:
+          type: string
+          description: 礼品ID
+        gift:
+          $ref: '#/components/schemas/Gift'
+        sortOrder:
+          type: integer
+          description: 排序
+        note:
+          type: string
+          description: 备注
+        customData:
+          type: object
+          description: 自定义数据
+        addedAt:
+          type: string
+          format: date-time
+          description: 添加时间
+      required: [id, listId, giftId, sortOrder]
+
+    # 请求模型
+    SignInRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 6
+      required: [email, password]
+
+    SignUpRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 6
+      required: [name, email, password]
+
+    QuizSubmissionRequest:
+      type: object
+      properties:
+        sessionId:
+          type: string
+          description: 会话ID (匿名用户)
+        answers:
+          type: object
+          properties:
+            relationship:
+              type: string
+            gender:
+              type: string
+            ageRange:
+              type: string
+            interests:
+              type: array
+              items:
+                type: string
+            budgetRange:
+              type: string
+            specialPreferences:
+              type: string
+          required: [relationship, interests, budgetRange]
+      required: [answers]
+
+    CreateListRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 500
+        isPublic:
+          type: boolean
+          default: false
+        metadata:
+          type: object
+      required: [name]
+
+    UpdateListRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 500
+        isPublic:
+          type: boolean
+        metadata:
+          type: object
+
+    AddListItemRequest:
+      type: object
+      properties:
+        giftId:
+          type: string
+        note:
+          type: string
+          maxLength: 500
+        customData:
+          type: object
+      required: [giftId]
+
+    UpdateListItemRequest:
+      type: object
+      properties:
+        sortOrder:
+          type: integer
+          minimum: 0
+        note:
+          type: string
+          maxLength: 500
+        customData:
+          type: object
+
+    CreateShareLinkRequest:
+      type: object
+      properties:
+        listId:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+        permissions:
+          type: object
+          properties:
+            canView:
+              type: boolean
+              default: true
+            canCopy:
+              type: boolean
+              default: false
+            canComment:
+              type: boolean
+              default: false
+      required: [listId]
+
+    # 响应模型
+    SessionResponse:
+      type: object
+      properties:
+        user:
+          $ref: '#/components/schemas/User'
+        expires:
+          type: string
+          format: date-time
+      required: [user, expires]
+
+    AuthResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        user:
+          $ref: '#/components/schemas/User'
+        message:
+          type: string
+      required: [success]
+
+    QuizSubmissionResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        quizId:
+          type: string
+        recommendationId:
+          type: string
+        message:
+          type: string
+      required: [success, quizId]
+
+    RecommendationsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            gifts:
+              type: array
+              items:
+                $ref: '#/components/schemas/Gift'
+            algorithm:
+              type: object
+              properties:
+                version:
+                  type: string
+                relevanceScore:
+                  type: number
+                  format: float
+            pagination:
+              $ref: '#/components/schemas/Pagination'
+        message:
+          type: string
+      required: [success, data]
+
+    GiftsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            gifts:
+              type: array
+              items:
+                $ref: '#/components/schemas/Gift'
+            pagination:
+              $ref: '#/components/schemas/Pagination'
+        message:
+          type: string
+      required: [success, data]
+
+    PopularGiftsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            gifts:
+              type: array
+              items:
+                allOf:
+                  - $ref: '#/components/schemas/Gift'
+                  - type: object
+                    properties:
+                      trendScore:
+                        type: number
+                        format: float
+                        description: 趋势分数
+            period:
+              type: string
+              description: 统计周期
+            pagination:
+              $ref: '#/components/schemas/Pagination'
+        message:
+          type: string
+      required: [success, data]
+
+    OccasionsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              name:
+                type: string
+              description:
+                type: string
+              giftCount:
+                type: integer
+              image:
+                type: string
+                format: uri
+        message:
+          type: string
+      required: [success, data]
+
+    ListsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            lists:
+              type: array
+              items:
+                allOf:
+                  - $ref: '#/components/schemas/GiftList'
+                  - type: object
+                    properties:
+                      itemCount:
+                        type: integer
+                        description: 项目数量
+            pagination:
+              $ref: '#/components/schemas/Pagination'
+        message:
+          type: string
+      required: [success, data]
+
+    ShareLinkResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            token:
+              type: string
+            url:
+              type: string
+              format: uri
+            expiresAt:
+              type: string
+              format: date-time
+        message:
+          type: string
+      required: [success, data]
+
+    SharedListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            list:
+              $ref: '#/components/schemas/GiftListDetails'
+            permissions:
+              type: object
+            isExpired:
+              type: boolean
+        message:
+          type: string
+      required: [success, data]
+
+    Pagination:
+      type: object
+      properties:
+        total:
+          type: integer
+          description: 总数量
+        limit:
+          type: integer
+          description: 每页数量
+        offset:
+          type: integer
+          description: 偏移量
+        hasNext:
+          type: boolean
+          description: 是否有下一页
+        hasPrev:
+          type: boolean
+          description: 是否有上一页
+      required: [total, limit, offset, hasNext, hasPrev]
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          default: false
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              description: 错误码
+            message:
+              type: string
+              description: 错误消息
+            details:
+              type: object
+              description: 错误详情
+            timestamp:
+              type: string
+              format: date-time
+              description: 错误时间
+        message:
+          type: string
+          description: 用户友好的错误消息
+      required: [success, error, message]
+
+  responses:
+    BadRequest:
+      description: 请求参数错误
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error:
+              code: "VALIDATION_ERROR"
+              message: "Request validation failed"
+              details:
+                field: "email"
+                issue: "Invalid email format"
+              timestamp: "2024-01-15T10:30:00Z"
+            message: "请检查输入的邮箱格式"
+
+    Unauthorized:
+      description: 未授权访问
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error:
+              code: "UNAUTHORIZED"
+              message: "Authentication required"
+              timestamp: "2024-01-15T10:30:00Z"
+            message: "请先登录"
+
+    Forbidden:
+      description: 访问被禁止
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error:
+              code: "FORBIDDEN"
+              message: "Access denied"
+              timestamp: "2024-01-15T10:30:00Z"
+            message: "您没有权限访问此资源"
+
+    NotFound:
+      description: 资源不存在
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error:
+              code: "NOT_FOUND"
+              message: "Resource not found"
+              timestamp: "2024-01-15T10:30:00Z"
+            message: "请求的资源不存在"
+
+    Conflict:
+      description: 资源冲突
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error:
+              code: "CONFLICT"
+              message: "Resource already exists"
+              details:
+                field: "email"
+                value: "user@example.com"
+              timestamp: "2024-01-15T10:30:00Z"
+            message: "该邮箱已被注册"
+
+    TooManyRequests:
+      description: 请求过于频繁
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error:
+              code: "RATE_LIMIT_EXCEEDED"
+              message: "Too many requests"
+              details:
+                limit: 100
+                window: "1 minute"
+                retryAfter: 45
+              timestamp: "2024-01-15T10:30:00Z"
+            message: "请求过于频繁，请稍后再试"
+      headers:
+        X-RateLimit-Limit:
+          schema:
+            type: integer
+          description: 请求限制数量
+        X-RateLimit-Remaining:
+          schema:
+            type: integer
+          description: 剩余请求数量
+        X-RateLimit-Reset:
+          schema:
+            type: integer
+          description: 重置时间戳
+        Retry-After:
+          schema:
+            type: integer
+          description: 重试等待秒数
+
+tags:
+  - name: Authentication
+    description: 用户认证相关接口
+  - name: Quiz
+    description: 问答系统接口
+  - name: Recommendations
+    description: 个性化推荐接口
+  - name: Gifts
+    description: 礼品管理接口
+  - name: Popular
+    description: 热门礼品接口
+  - name: Occasions
+    description: 场景分类接口
+  - name: Lists
+    description: 礼品清单接口
+  - name: List Items
+    description: 清单项目接口
+  - name: Share Links
+    description: 分享链接接口
+

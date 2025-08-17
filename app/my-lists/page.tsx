@@ -49,7 +49,9 @@ export default function MyListsPage() {
 
   // Redirect if not logged in
   if (!user) {
-    router.push("/")
+    if (typeof window !== 'undefined') {
+      router.push("/")
+    }
     return null
   }
 
@@ -78,7 +80,14 @@ export default function MyListsPage() {
   }
 
   const handleShareList = (listId: string) => {
-    setShowShareModal(true)
+    const shareLink = generateShareLink(listId)
+    navigator.clipboard.writeText(shareLink)
+    
+    const list = lists.find(l => l.id === listId)
+    toast({
+      title: "Share Link Copied!",
+      description: `Share link for "${list?.name}" has been copied to clipboard.`,
+    })
   }
 
   const handleGenerateShareLink = (listId: string) => {
@@ -102,6 +111,12 @@ export default function MyListsPage() {
     return "/gift-list-placeholder.png"
   }
 
+  // 获取礼品网格图片（最多显示4个）
+  const getGiftGrid = (list: any) => {
+    const gifts = list.gifts.slice(0, 4)
+    return gifts.map((gift: any) => gift.image || "/placeholder.svg")
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4">
       <div className="max-w-7xl mx-auto">
@@ -122,7 +137,7 @@ export default function MyListsPage() {
                   Create List
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-md rounded-3xl border-gray-100 shadow-[0_25px_50px_rgba(0,0,0,0.25)] p-8">
+              <DialogContent className="sm:max-w-md rounded-2xl border-gray-100 shadow-[0_25px_50px_rgba(0,0,0,0.25)] p-8">
                 <DialogHeader className="text-center pb-6">
                   <DialogTitle className="text-2xl font-bold text-gray-900">Create New List</DialogTitle>
                   <DialogDescription className="text-lg text-gray-600">
@@ -158,118 +173,147 @@ export default function MyListsPage() {
         </div>
 
         {lists.length > 0 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {lists.map((list, index) => (
               <div
                 key={list.id}
                 className="animate-in fade-in-0 slide-in-from-bottom-4 duration-500"
                 style={{ animationDelay: `${200 + index * 100}ms` }}
               >
-                <Card className="group bg-white border border-gray-100 shadow-[0_1px_3px_rgba(0,0,0,0.1)] hover:shadow-[0_8px_25px_rgba(0,0,0,0.15)] hover:-translate-y-1 transition-all duration-200 rounded-lg">
-                  <CardHeader className="p-6 pt-0 pb-0">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1 min-w-0">
-                        {editingList === list.id ? (
-                          <div className="space-y-2">
-                            <Input
-                              value={editName}
-                              onChange={(e) => setEditName(e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter") handleRenameList(list.id)
-                                if (e.key === "Escape") {
-                                  setEditingList(null)
-                                  setEditName("")
-                                }
-                              }}
-                              onBlur={() => handleRenameList(list.id)}
-                              autoFocus
-                              className="text-lg font-semibold rounded-2xl"
-                            />
-                          </div>
-                        ) : (
-                          <Link href={`/my-lists/${list.id}`}>
-                            <CardTitle className="text-xl font-semibold hover:text-purple-primary transition-colors cursor-pointer truncate">
-                              {list.name}
-                            </CardTitle>
-                          </Link>
-                        )}
-                        <div className="flex flex-wrap items-center gap-2 mt-3">
-                          <Badge
-                            variant={list.isPublic ? "default" : "secondary"}
-                            className="text-sm px-3 py-1 rounded-xl"
-                          >
-                            {list.isPublic ? "Public" : "Private"}
-                          </Badge>
-                          <div className="flex items-center gap-1 text-sm text-gray-500">
-                            <Calendar className="h-4 w-4" />
-                            {formatDistanceToNow(list.updatedAt, { addSuffix: true })}
+                <Card className="group bg-white border-0 shadow-none hover:shadow-lg transition-all duration-300 rounded-2xl overflow-hidden">
+                  {/* 图片网格区域 - 可点击 */}
+                  <Link href={`/my-lists/${list.id}`}>
+                    <div className="relative aspect-[4/3] bg-gray-100 overflow-hidden cursor-pointer">
+                      {list.gifts.length > 0 ? (
+                        <div className="grid grid-cols-2 gap-0.5 h-full">
+                          {getGiftGrid(list).map((image: string, idx: number) => (
+                            <div key={idx} className="relative overflow-hidden bg-gray-200">
+                              <img
+                                src={image}
+                                alt=""
+                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                              />
+                            </div>
+                          ))}
+                          {/* 如果少于4个礼品，填充空白区域 */}
+                          {Array.from({ length: Math.max(0, 4 - list.gifts.length) }).map((_, idx) => (
+                            <div key={`empty-${idx}`} className="bg-gray-100"></div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-center h-full">
+                          <div className="text-center">
+                            <Gift className="h-12 w-12 text-gray-300 mx-auto mb-2" />
+                            <p className="text-sm text-gray-400 font-medium">Empty list</p>
                           </div>
                         </div>
-                      </div>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm" className="h-10 w-10 p-0 rounded-xl hover:bg-gray-100">
-                            <MoreVertical className="h-5 w-5" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="rounded-2xl border-gray-100 shadow-lg">
-                          <DropdownMenuItem
-                            onClick={() => {
-                              setEditingList(list.id)
-                              setEditName(list.name)
-                            }}
-                            className="rounded-xl p-3"
-                          >
-                            <Edit className="h-4 w-4 mr-3" />
-                            Rename
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleShareList(list.id)} className="rounded-xl p-3">
-                            <Share2 className="h-4 w-4 mr-3" />
-                            Share
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => setDeletingList(list.id)}
-                            className="text-red-error focus:text-red-error rounded-xl p-3"
-                          >
-                            <Trash2 className="h-4 w-4 mr-3" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      )}
                     </div>
-                  </CardHeader>
-                  <CardContent className="p-6 pt-0 pb-0 rounded-lg">
-                    <Link href={`/my-lists/${list.id}`}>
-                      <div className="aspect-video relative mb-6 overflow-hidden rounded-2xl bg-gray-100 cursor-pointer">
-                        <img
-                          src={getListThumbnail(list) || "/placeholder.svg"}
-                          alt={list.name}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                  </Link>
+                  
+                  {/* 右上角操作菜单 */}
+                  <div className="absolute top-3 right-3">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button 
+                          variant="secondary" 
+                          size="sm" 
+                          className="h-8 w-8 p-0 bg-white/90 hover:bg-white rounded-full shadow-sm backdrop-blur-sm"
+                        >
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="rounded-xl border-gray-100 shadow-lg">
+                        <DropdownMenuItem
+                          onClick={() => {
+                            setEditingList(list.id)
+                            setEditName(list.name)
+                          }}
+                          className="rounded-lg p-3"
+                        >
+                          <Edit className="h-4 w-4 mr-2" />
+                          Rename
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleShareList(list.id)} className="rounded-lg p-3">
+                          <Share2 className="h-4 w-4 mr-2" />
+                          Share
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => setDeletingList(list.id)}
+                          className="text-red-600 focus:text-red-600 rounded-lg p-3"
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+
+                  {/* 内容区域 */}
+                  <div className="p-4">
+                    {editingList === list.id ? (
+                      <div className="mb-3">
+                        <Input
+                          value={editName}
+                          onChange={(e) => setEditName(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") handleRenameList(list.id)
+                            if (e.key === "Escape") {
+                              setEditingList(null)
+                              setEditName("")
+                            }
+                          }}
+                          onBlur={() => handleRenameList(list.id)}
+                          autoFocus
+                          className="text-lg font-semibold border border-gray-200 rounded-lg px-3 py-2 h-auto focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
                         />
-                        {list.gifts.length === 0 && (
-                          <div className="absolute inset-0 flex items-center justify-center rounded-sm">
-                            <div className="text-center">
-                              <List className="h-10 w-10 text-gray-400 mx-auto mb-3" />
-                              <p className="text-base text-gray-500 font-medium">Empty list</p>
-                            </div>
-                          </div>
-                        )}
                       </div>
-                    </Link>
+                    ) : (
+                      <Link href={`/my-lists/${list.id}`}>
+                        <h3 className="font-semibold text-lg text-gray-900 mb-3 hover:text-purple-600 transition-colors cursor-pointer line-clamp-1">
+                          {list.name}
+                        </h3>
+                      </Link>
+                    )}
+                    
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 text-base text-gray-600">
-                        <Gift className="h-5 w-5" />
-                        <span className="font-medium">
-                          {list.gifts.length} {list.gifts.length === 1 ? "item" : "items"}
+                      <div className="flex items-center gap-2">
+                        <Gift className="h-4 w-4 text-gray-400" />
+                        <span className="text-sm text-gray-600">
+                          {list.gifts.length} gifts
+                        </span>
+                        <span className="text-sm text-gray-400">•</span>
+                        <span className="text-sm text-gray-400">
+                          {formatDistanceToNow(list.updatedAt, { addSuffix: true })}
                         </span>
                       </div>
-                      <Link href={`/my-lists/${list.id}`}>
-                        <Button variant="secondary" size="sm" className="rounded-2xl">
-                          View List
-                        </Button>
-                      </Link>
                     </div>
-                  </CardContent>
+
+                    {/* 操作按钮 */}
+                    <div className="flex gap-2 mt-4">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        className="flex-1 h-9 rounded-full text-sm font-medium border-gray-200 hover:bg-gray-50"
+                        onClick={() => {
+                          setEditingList(list.id)
+                          setEditName(list.name)
+                        }}
+                      >
+                        <Edit className="h-4 w-4 mr-2" />
+                        Rename
+                      </Button>
+                      <Button 
+                        variant="default" 
+                        size="sm"
+                        className="px-6 h-9 rounded-full text-sm font-medium bg-purple-600 hover:bg-purple-700"
+                        onClick={() => handleShareList(list.id)}
+                      >
+                        <Share2 className="h-4 w-4 mr-2" />
+                        Share
+                      </Button>
+                    </div>
+                  </div>
                 </Card>
               </div>
             ))}

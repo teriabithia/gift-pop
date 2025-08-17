@@ -1,0 +1,16 @@
+{
+  "name": "giftpop-scripts",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "fix-imports": "ts-node fix-imports.ts",
+    "rollback-imports": "ts-node fix-imports.ts --rollback",
+    "migrate": "../scripts/migrate-structure.sh"
+  },
+  "devDependencies": {
+    "ts-morph": "^21.0.1",
+    "ts-node": "^10.9.1",
+    "@types/node": "^20.0.0"
+  }
+}
+

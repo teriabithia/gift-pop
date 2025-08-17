@@ -3,9 +3,9 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+
 import { Label } from "@/components/ui/label"
-import { CheckCircle, Copy, X, Share2 } from "lucide-react"
+import { CheckCircle, Copy, Share2 } from "lucide-react"
 import type { GiftList } from "@/lib/types"
 import { useToast } from "@/hooks/use-toast"
 
@@ -65,16 +65,11 @@ export function ShareModal({ open, onOpenChange, lists, onGenerateLink }: ShareM
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-sm max-w-[85vw] w-full mx-4 p-4">
+      <DialogContent className="sm:max-w-sm rounded-2xl border-gray-100 shadow-[0_25px_50px_rgba(0,0,0,0.25)] p-6">
         {step === "select" ? (
           <>
             <DialogHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <DialogTitle className="text-lg font-bold">Share Gift List</DialogTitle>
-                <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={handleClose}>
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
+              <DialogTitle className="text-lg font-bold">Share Gift List</DialogTitle>
               <DialogDescription className="text-sm text-muted-foreground">
                 Choose a list to share with others
               </DialogDescription>
@@ -85,23 +80,24 @@ export function ShareModal({ open, onOpenChange, lists, onGenerateLink }: ShareM
                 <Label className="text-xs font-medium text-foreground">Select a list to share</Label>
 
                 {lists.length > 0 ? (
-                  <RadioGroup value={selectedListId} onValueChange={setSelectedListId}>
+                  <div className="space-y-2">
                     {lists.map((list) => (
                       <div
                         key={list.id}
-                        className="flex items-center space-x-2 p-3 border-2 rounded-lg cursor-pointer hover:border-primary/50 transition-colors"
+                        className={`p-3 border-2 rounded-lg cursor-pointer transition-colors ${
+                          selectedListId === list.id
+                            ? "border-purple-500 bg-purple-50"
+                            : "border-gray-200 hover:border-purple-200"
+                        }`}
                         onClick={() => setSelectedListId(list.id)}
                       >
-                        <RadioGroupItem value={list.id} id={list.id} />
-                        <Label htmlFor={list.id} className="flex-1 cursor-pointer">
-                          <div className="font-medium text-sm text-foreground">{list.name}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {list.gifts.length} {list.gifts.length === 1 ? "item" : "items"}
-                          </div>
-                        </Label>
+                        <div className="font-medium text-sm text-foreground">{list.name}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {list.gifts.length} {list.gifts.length === 1 ? "item" : "items"}
+                        </div>
                       </div>
                     ))}
-                  </RadioGroup>
+                  </div>
                 ) : (
                   <div className="text-center py-6">
                     <p className="text-sm text-muted-foreground">No lists available to share</p>
@@ -116,7 +112,7 @@ export function ShareModal({ open, onOpenChange, lists, onGenerateLink }: ShareM
                 <Button
                   onClick={handleGenerateLink}
                   disabled={!selectedListId}
-                  className="flex-1 bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90 h-9 text-sm"
+                  className="flex-1 bg-purple-600 hover:bg-purple-700 text-white h-9 text-sm"
                 >
                   <Share2 className="h-3 w-3 mr-1" />
                   Generate Link
@@ -127,12 +123,7 @@ export function ShareModal({ open, onOpenChange, lists, onGenerateLink }: ShareM
         ) : (
           <>
             <DialogHeader className="pb-2">
-              <div className="flex items-center justify-between">
-                <DialogTitle className="text-lg font-bold">Share Gift List</DialogTitle>
-                <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={handleClose}>
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
+              <DialogTitle className="text-lg font-bold">Share Gift List</DialogTitle>
               <DialogDescription className="text-sm text-muted-foreground">
                 Your shareable link is ready!
               </DialogDescription>
@@ -170,7 +161,7 @@ export function ShareModal({ open, onOpenChange, lists, onGenerateLink }: ShareM
 
               <Button
                 onClick={handleClose}
-                className="w-full bg-gradient-to-r from-primary to-secondary hover:from-primary/90 hover:to-secondary/90 h-9 text-sm"
+                className="w-full bg-purple-600 hover:bg-purple-700 text-white h-9 text-sm"
               >
                 Done
               </Button>
