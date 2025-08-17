@@ -9,7 +9,7 @@ export interface UserPreferences {
 }
 
 export const GIFT_RECOMMENDATION_PROMPT = (preferences: UserPreferences) => `
-Generate 4 gifts for ${preferences.relationship || 'someone'} who likes ${preferences.interests?.join(', ') || 'general items'}. Budget: ${preferences.budget || '$50-100'}.
+Generate 24 gifts for ${preferences.relationship || 'someone'} who likes ${preferences.interests?.join(', ') || 'general items'}. Budget: ${preferences.budget || '$50-100'}.
 
 Return ONLY valid JSON:
 
@@ -33,7 +33,7 @@ Return ONLY valid JSON:
 IMPORTANT: Generate specific, searchable product names and brands. The searchTerm should be exactly what someone would type to find this product online (e.g., "Apple iPad Air 5th generation", "Nintendo Switch OLED console", "Instant Pot Duo 7-in-1 pressure cooker").`
 
 export const POPULAR_GIFTS_PROMPT = () => `
-Generate 4 popular trending gifts. Return ONLY valid JSON with NO extra text:
+Generate 24 popular trending gifts. Return ONLY valid JSON with NO extra text:
 
 {
   "gifts": [
@@ -55,7 +55,7 @@ Generate 4 popular trending gifts. Return ONLY valid JSON with NO extra text:
 IMPORTANT: Generate specific, searchable product names and brands. The searchTerm should be exactly what someone would type to find this product online (e.g., "Apple iPad Air 5th generation", "Nintendo Switch OLED console", "Instant Pot Duo 7-in-1 pressure cooker"). Price range $20-$100.`
 
 export const OCCASION_GIFTS_PROMPT = (occasion: string) => `
-Generate 4 ${occasion} gifts. Return ONLY valid JSON:
+Generate 24 ${occasion} gifts. Return ONLY valid JSON:
 
 {
   "gifts": [
