@@ -7,11 +7,41 @@ import {
 } from '../prompts'
 import { Gift } from '../types'
 import { mockGifts } from '../mock-data'
+import { getRealAmazonProducts } from '../real-amazon-products'
 
 export class RecommendationService {
   private static instance: RecommendationService
   private cache = new Map<string, { data: Gift[], timestamp: number }>()
   private readonly CACHE_TTL = 30 * 60 * 1000 // 30分钟缓存
+
+  // Validate Amazon URL and replace with real products if invalid
+  private validateAndFixAmazonLinks(gifts: Gift[]): Gift[] {
+    const realProducts = getRealAmazonProducts(gifts.length)
+    
+    return gifts.map((gift, index) => {
+      // Check if Amazon URL has valid ASIN format
+      const amazonUrlPattern = /amazon\.com\/dp\/[A-Z0-9]{10}/
+      const isValidAmazonUrl = amazonUrlPattern.test(gift.shopUrl)
+      
+      if (!isValidAmazonUrl) {
+        console.warn(`Invalid Amazon URL detected for ${gift.name}, replacing with real product`)
+        // Replace with real product but keep original name and price if reasonable
+        const realProduct = realProducts[index % realProducts.length]
+        return {
+          ...gift,
+          shopUrl: realProduct.shopUrl,
+          // Optionally use real product data if AI data seems fake
+          ...(gift.price > 500 || gift.price < 5 ? {
+            name: realProduct.name,
+            brand: realProduct.brand,
+            price: realProduct.price
+          } : {})
+        }
+      }
+      
+      return gift
+    })
+  }
 
   static getInstance(): RecommendationService {
     if (!RecommendationService.instance) {
@@ -192,9 +222,12 @@ export class RecommendationService {
         throw new Error('No recommendations received')
       }
 
+      // Validate and fix Amazon links
+      const validatedGifts = this.validateAndFixAmazonLinks(gifts)
+
       // 缓存结果
-      this.setCache(cacheKey, gifts)
-      return gifts
+      this.setCache(cacheKey, validatedGifts)
+      return validatedGifts
 
     } catch (error) {
       console.error('Error getting personalized recommendations:', error)
@@ -232,9 +265,12 @@ export class RecommendationService {
         throw new Error('No popular gifts received')
       }
 
+      // Validate and fix Amazon links
+      const validatedGifts = this.validateAndFixAmazonLinks(gifts)
+
       // 缓存结果
-      this.setCache(cacheKey, gifts)
-      return gifts
+      this.setCache(cacheKey, validatedGifts)
+      return validatedGifts
 
     } catch (error) {
       console.error('Error getting popular gifts:', error)
@@ -272,9 +308,12 @@ export class RecommendationService {
         throw new Error('No occasion gifts received')
       }
 
+      // Validate and fix Amazon links
+      const validatedGifts = this.validateAndFixAmazonLinks(gifts)
+
       // 缓存结果
-      this.setCache(cacheKey, gifts)
-      return gifts
+      this.setCache(cacheKey, validatedGifts)
+      return validatedGifts
 
     } catch (error) {
       console.error('Error getting occasion gifts:', error)

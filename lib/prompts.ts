@@ -23,17 +23,17 @@ Return ONLY valid JSON:
       "rating": 4.5,
       "reviewCount": 500,
       "image": "/gift.jpg",
-      "shopUrl": "https://amazon.com/dp/B123456789",
+      "shopUrl": "https://www.amazon.com/dp/B0ABCDEFGH",
       "category": "Category",
       "tags": ["thoughtful"]
     }
   ]
 }
 
-Use real Amazon URLs.`
+CRITICAL: Use ONLY real, existing Amazon product URLs with valid ASINs. Research actual products that match the preferences.`
 
 export const POPULAR_GIFTS_PROMPT = () => `
-Generate 4 popular trending gifts. Return ONLY valid JSON with NO extra text:
+Generate 4 popular trending gifts that actually exist on Amazon. Return ONLY valid JSON with NO extra text:
 
 {
   "gifts": [
@@ -45,17 +45,17 @@ Generate 4 popular trending gifts. Return ONLY valid JSON with NO extra text:
       "rating": 4.5,
       "reviewCount": 1000,
       "image": "/gift.jpg",
-      "shopUrl": "https://amazon.com/dp/B123456789",
+      "shopUrl": "https://www.amazon.com/dp/B0ABCDEFGH",
       "category": "Electronics",
       "tags": ["trending"]
     }
   ]
 }
 
-Use real Amazon product URLs. Price range $20-$100.`
+CRITICAL: Use ONLY real, existing Amazon product URLs with valid ASINs (B0XXXXXXXX format). Research actual popular products on Amazon. Price range $20-$100.`
 
 export const OCCASION_GIFTS_PROMPT = (occasion: string) => `
-Generate 4 ${occasion} gifts. Return ONLY valid JSON:
+Generate 4 ${occasion} gifts that actually exist on Amazon. Return ONLY valid JSON:
 
 {
   "gifts": [
@@ -67,11 +67,11 @@ Generate 4 ${occasion} gifts. Return ONLY valid JSON:
       "rating": 4.6,
       "reviewCount": 800,
       "image": "/gift.jpg",
-      "shopUrl": "https://amazon.com/dp/B123456789",
+      "shopUrl": "https://www.amazon.com/dp/B0ABCDEFGH",
       "category": "Category",
       "tags": ["${occasion.toLowerCase()}"]
     }
   ]
 }
 
-Use real Amazon URLs. Price $20-$100.`
+CRITICAL: Use ONLY real, existing Amazon product URLs with valid ASINs. Research actual products suitable for ${occasion}. Price $20-$100.`
