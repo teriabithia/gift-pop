@@ -26,6 +26,7 @@ export interface Gift {
   reviewCount: number
   image: string
   shopUrl: string
+  searchTerm?: string // AI生成的搜索关键词
   category?: string
   tags?: string[] | string // 支持数组或JSON字符串格式
 }

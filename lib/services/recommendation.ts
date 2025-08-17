@@ -8,58 +8,57 @@ import {
 import { Gift } from '../types'
 import { mockGifts } from '../mock-data'
 import { getRealAmazonProducts } from '../real-amazon-products'
+import { googleShoppingService } from '../google-shopping-api'
 
 export class RecommendationService {
   private static instance: RecommendationService
   private cache = new Map<string, { data: Gift[], timestamp: number }>()
   private readonly CACHE_TTL = 30 * 60 * 1000 // 30分钟缓存
 
-  // Validate shopping URLs and replace with real products if invalid
-  private validateAndFixShoppingLinks(gifts: Gift[]): Gift[] {
-    const realProducts = getRealAmazonProducts(gifts.length)
+  // Use Google Shopping API to get real products based on AI-generated search terms
+  private async getGoogleShoppingProducts(gifts: Gift[]): Promise<Gift[]> {
+    const enhancedGifts: Gift[] = []
     
-    return gifts.map((gift, index) => {
-      // Check if URL is from a valid shopping platform
-      const validPlatformPatterns = [
-        /amazon\.com\/dp\/[A-Z0-9]{10}/, // Amazon
-        /target\.com\/p\//, // Target
-        /walmart\.com\/ip\//, // Walmart
-        /bestbuy\.com\/site\//, // Best Buy
-        /etsy\.com\/listing\//, // Etsy
-        /sephora\.com\/product\//, // Sephora
-        /apple\.com\//, // Apple
-        /nike\.com\//, // Nike
-        /levi\.com\//, // Levi's
-        /dyson\.com\//, // Dyson
-        /williams-sonoma\.com\//, // Williams Sonoma
-        /barnesandnoble\.com\//, // Barnes & Noble
-        /macys\.com\//, // Macy's
-        /nordstrom\.com\//, // Nordstrom
-        /wayfair\.com\//, // Wayfair
-      ]
-      
-      const isValidShoppingUrl = validPlatformPatterns.some(pattern => 
-        pattern.test(gift.shopUrl)
-      )
-      
-      if (!isValidShoppingUrl || gift.shopUrl === '#' || gift.shopUrl.includes('example.com')) {
-        console.warn(`Invalid shopping URL detected for ${gift.name}, replacing with real product`)
-        // Replace with real product but keep original name and price if reasonable
-        const realProduct = realProducts[index % realProducts.length]
-        return {
-          ...gift,
-          shopUrl: realProduct.shopUrl,
-          // Optionally use real product data if AI data seems fake
-          ...(gift.price > 1000 || gift.price < 5 ? {
-            name: realProduct.name,
-            brand: realProduct.brand,
-            price: realProduct.price
-          } : {})
+    for (const gift of gifts) {
+      try {
+        // Use searchTerm if available, otherwise use name
+        const searchTerm = gift.searchTerm || gift.name || 'gift'
+        
+        // Get real products from Google Shopping
+        const googleProducts = await googleShoppingService.searchProducts(searchTerm, 1)
+        
+        if (googleProducts.length > 0) {
+          // Use the first Google Shopping result
+          const googleProduct = googleProducts[0]
+          enhancedGifts.push({
+            ...gift,
+            name: gift.name || googleProduct.name,
+            brand: gift.brand || googleProduct.brand,
+            price: gift.price > 0 ? gift.price : googleProduct.price,
+            image: gift.image || googleProduct.image,
+            shopUrl: googleProduct.shopUrl, // Real shopping link from Google
+            rating: gift.rating > 0 ? gift.rating : googleProduct.rating,
+            reviewCount: gift.reviewCount > 0 ? gift.reviewCount : googleProduct.reviewCount
+          })
+        } else {
+          // Fallback to original gift data with Google Shopping search link
+          enhancedGifts.push({
+            ...gift,
+            shopUrl: `https://www.google.com/search?q=${encodeURIComponent(searchTerm + ' buy online')}&tbm=shop`
+          })
         }
+      } catch (error) {
+        console.warn(`Failed to get Google Shopping data for ${gift.name}:`, error)
+        // Fallback to original gift data with Google Shopping search link
+        const searchTerm = gift.searchTerm || gift.name || 'gift'
+        enhancedGifts.push({
+          ...gift,
+          shopUrl: `https://www.google.com/search?q=${encodeURIComponent(searchTerm + ' buy online')}&tbm=shop`
+        })
       }
-      
-      return gift
-    })
+    }
+    
+    return enhancedGifts
   }
 
   static getInstance(): RecommendationService {
@@ -232,7 +231,7 @@ export class RecommendationService {
         rating: Number(item.rating) || 0, // 0 means no rating
         reviewCount: Number(item.reviewCount) || 0,
         image: item.image || '/gift-placeholder.jpg',
-        shopUrl: item.shopUrl || '#',
+        searchTerm: item.searchTerm || item.name || 'gift',
         category: item.category || 'General',
         tags: Array.isArray(item.tags) ? item.tags : ['recommended'],
       })) || []
@@ -241,8 +240,8 @@ export class RecommendationService {
         throw new Error('No recommendations received')
       }
 
-      // Validate and fix shopping links
-      const validatedGifts = this.validateAndFixShoppingLinks(gifts)
+      // Use Google Shopping API to get real products
+      const validatedGifts = await this.getGoogleShoppingProducts(gifts)
 
       // 缓存结果
       this.setCache(cacheKey, validatedGifts)
@@ -275,7 +274,7 @@ export class RecommendationService {
         rating: Number(item.rating) || 0, // 0 means no rating
         reviewCount: Number(item.reviewCount) || 0,
         image: item.image || '/gift-placeholder.jpg',
-        shopUrl: item.shopUrl || '#',
+        searchTerm: item.searchTerm || item.name || 'gift',
         category: item.category || 'Trending',
         tags: Array.isArray(item.tags) ? item.tags : ['popular', 'trending'],
       })) || []
@@ -284,8 +283,8 @@ export class RecommendationService {
         throw new Error('No popular gifts received')
       }
 
-      // Validate and fix shopping links
-      const validatedGifts = this.validateAndFixShoppingLinks(gifts)
+      // Use Google Shopping API to get real products
+      const validatedGifts = await this.getGoogleShoppingProducts(gifts)
 
       // 缓存结果
       this.setCache(cacheKey, validatedGifts)
@@ -318,7 +317,7 @@ export class RecommendationService {
         rating: Number(item.rating) || 0, // 0 means no rating
         reviewCount: Number(item.reviewCount) || 0,
         image: item.image || '/gift-placeholder.jpg',
-        shopUrl: item.shopUrl || '#',
+        searchTerm: item.searchTerm || item.name || 'gift',
         category: item.category || 'Occasion',
         tags: Array.isArray(item.tags) ? item.tags : [occasion.toLowerCase(), 'occasion'],
       })) || []
@@ -327,8 +326,8 @@ export class RecommendationService {
         throw new Error('No occasion gifts received')
       }
 
-      // Validate and fix shopping links
-      const validatedGifts = this.validateAndFixShoppingLinks(gifts)
+      // Use Google Shopping API to get real products
+      const validatedGifts = await this.getGoogleShoppingProducts(gifts)
 
       // 缓存结果
       this.setCache(cacheKey, validatedGifts)

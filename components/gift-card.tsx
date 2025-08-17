@@ -10,6 +10,7 @@ import type { Gift } from "@/lib/types"
 import { useAuth } from "@/contexts/auth-context"
 import { useToast } from "@/hooks/use-toast"
 import { useLists } from "@/contexts/lists-context"
+import { ShoppingModal } from "./shopping-modal"
 
 interface GiftCardProps {
   gift: Gift
@@ -23,6 +24,7 @@ export function GiftCard({ gift, onAddToList, showCategoryBadge = true, showTags
   const { lists } = useLists()
   const { toast } = useToast()
   const [isAdding, setIsAdding] = useState(false)
+  const [showShoppingModal, setShowShoppingModal] = useState(false)
 
     // 不再检查是否已在清单中，允许重复添加
 
@@ -61,16 +63,8 @@ export function GiftCard({ gift, onAddToList, showCategoryBadge = true, showTags
   }
 
   const handleShopNow = () => {
-    // Show message if no valid link is available
-    if (!gift.shopUrl || gift.shopUrl === '#') {
-      toast({
-        title: "Link not available",
-        description: "Shopping link is not available for this item.",
-        variant: "default",
-      })
-      return
-    }
-    window.open(gift.shopUrl, "_blank", "noopener,noreferrer")
+    // Open shopping modal instead of direct link
+    setShowShoppingModal(true)
   }
 
   return (
@@ -152,6 +146,12 @@ export function GiftCard({ gift, onAddToList, showCategoryBadge = true, showTags
           </div>
         </div>
       </CardContent>
+      
+      <ShoppingModal
+        gift={gift}
+        isOpen={showShoppingModal}
+        onClose={() => setShowShoppingModal(false)}
+      />
     </Card>
   )
 }

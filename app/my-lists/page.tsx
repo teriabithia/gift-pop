@@ -50,7 +50,7 @@ export default function MyListsPage() {
   // Redirect if not logged in
   if (!user) {
     if (typeof window !== 'undefined') {
-      router.push("/")
+    router.push("/")
     }
     return null
   }
@@ -251,30 +251,30 @@ export default function MyListsPage() {
 
                   {/* 内容区域 */}
                   <div className="p-4">
-                    {editingList === list.id ? (
+                        {editingList === list.id ? (
                       <div className="mb-3">
-                        <Input
-                          value={editName}
-                          onChange={(e) => setEditName(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") handleRenameList(list.id)
-                            if (e.key === "Escape") {
-                              setEditingList(null)
-                              setEditName("")
-                            }
-                          }}
-                          onBlur={() => handleRenameList(list.id)}
-                          autoFocus
+                            <Input
+                              value={editName}
+                              onChange={(e) => setEditName(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") handleRenameList(list.id)
+                                if (e.key === "Escape") {
+                                  setEditingList(null)
+                                  setEditName("")
+                                }
+                              }}
+                              onBlur={() => handleRenameList(list.id)}
+                              autoFocus
                           className="text-lg font-semibold border border-gray-200 rounded-lg px-3 py-2 h-auto focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                        />
-                      </div>
-                    ) : (
-                      <Link href={`/my-lists/${list.id}`}>
+                            />
+                          </div>
+                        ) : (
+                          <Link href={`/my-lists/${list.id}`}>
                         <h3 className="font-semibold text-lg text-gray-900 mb-3 hover:text-purple-600 transition-colors cursor-pointer line-clamp-1">
-                          {list.name}
+                              {list.name}
                         </h3>
-                      </Link>
-                    )}
+                          </Link>
+                        )}
                     
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
@@ -284,7 +284,7 @@ export default function MyListsPage() {
                         </span>
                         <span className="text-sm text-gray-400">•</span>
                         <span className="text-sm text-gray-400">
-                          {formatDistanceToNow(list.updatedAt, { addSuffix: true })}
+                            {formatDistanceToNow(list.updatedAt, { addSuffix: true })}
                         </span>
                       </div>
                     </div>
@@ -295,13 +295,13 @@ export default function MyListsPage() {
                         variant="outline" 
                         size="sm"
                         className="flex-1 h-9 rounded-full text-sm font-medium border-gray-200 hover:bg-gray-50"
-                        onClick={() => {
-                          setEditingList(list.id)
-                          setEditName(list.name)
-                        }}
-                      >
+                            onClick={() => {
+                              setEditingList(list.id)
+                              setEditName(list.name)
+                            }}
+                          >
                         <Edit className="h-4 w-4 mr-2" />
-                        Rename
+                            Rename
                       </Button>
                       <Button 
                         variant="default" 
@@ -310,10 +310,10 @@ export default function MyListsPage() {
                         onClick={() => handleShareList(list.id)}
                       >
                         <Share2 className="h-4 w-4 mr-2" />
-                        Share
+                            Share
                       </Button>
                     </div>
-                  </div>
+                    </div>
                 </Card>
               </div>
             ))}
