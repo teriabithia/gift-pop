@@ -132,7 +132,7 @@ export class RecommendationService {
             const giftArray = JSON.parse(`[${giftArrayStr}]`)
             console.log(`✅ Extracted ${giftArray.length} gifts from truncated JSON`)
             return { gifts: giftArray }
-          } catch (extractError) {
+          } catch (extractError: any) {
             console.warn('Failed to extract gifts from truncated JSON:', extractError.message)
           }
         }
