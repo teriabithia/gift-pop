@@ -1,7 +1,7 @@
-# Google Content API for Shopping 设置指南
+# Google Custom Search API + Shopping 设置指南
 
 ## 概述
-本应用使用Google Content API for Shopping来获取真实的商品信息和购买链接，确保所有推荐的商品都有有效的购买渠道。
+本应用使用Google Custom Search API + Shopping来搜索全网商品并获取真实的购买链接，确保所有推荐的商品都有有效的购买渠道。
 
 ## 设置步骤
 
@@ -9,36 +9,45 @@
 1. 访问 [Google Cloud Console](https://console.cloud.google.com/)
 2. 创建新项目或选择现有项目
 3. 启用以下API：
-   - Content API for Shopping
-   - Google Shopping API
+   - Custom Search API
+   - Shopping API
 
 ### 2. 创建服务账号
 1. 在IAM & Admin > Service Accounts中创建服务账号
 2. 下载JSON密钥文件
 3. 将密钥文件安全保存
 
-### 3. 获取API密钥
-1. 在APIs & Services > Credentials中创建API密钥
+### 3. 创建Custom Search Engine
+1. 访问 [Google Programmable Search Engine](https://programmablesearchengine.google.com/)
+2. 创建新的搜索引擎
+3. 配置搜索引擎设置：
+   - 搜索整个网络
+   - 启用Shopping搜索
+   - 获取搜索引擎ID (cx)
+
+### 4. 获取API密钥
+1. 在Google Cloud Console > APIs & Services > Credentials中创建API密钥
 2. 复制API密钥
 
-### 4. 配置环境变量
+### 5. 配置环境变量
 在`.env.local`文件中添加：
 ```bash
-GOOGLE_SHOPPING_API_KEY=your_api_key_here
-GOOGLE_MERCHANT_ID=your_merchant_id_here
+GOOGLE_CUSTOM_SEARCH_API_KEY=your_api_key_here
+GOOGLE_CUSTOM_SEARCH_ENGINE_ID=your_search_engine_id_here
 ```
 
-### 5. 设置配额和限制
-- 默认配额：1000 requests/day
-- 可以申请提高配额
+### 6. 设置配额和限制
+- 默认配额：100 requests/day (免费)
+- 付费版本：10,000 requests/day ($5/1000 queries)
 - 建议启用缓存以减少API调用
 
 ## API功能特性
 
-### 产品搜索
+### 全网商品搜索
 - 基于AI生成的搜索关键词
-- 返回真实商品信息
-- 包含价格、品牌、图片、购买链接
+- 搜索整个互联网的商品信息
+- 返回真实商品信息：价格、品牌、图片、购买链接
+- 支持所有电商平台：Amazon、Target、Walmart、Best Buy等
 
 ### 数据转换
 - 自动转换为应用内Gift格式
@@ -59,15 +68,16 @@ GOOGLE_MERCHANT_ID=your_merchant_id_here
 
 ### 常见错误
 - 401: API密钥无效
-- 403: 配额超限
+- 403: 配额超限或搜索引擎ID无效
 - 429: 请求频率过高
+- 400: 搜索查询格式错误
 
 ## 测试和验证
 
 ### 本地测试
 ```bash
-# 测试API连接
-curl "https://shoppingcontent.googleapis.com/content/v2.1/products/search?q=test&key=YOUR_API_KEY"
+# 测试Custom Search API连接
+curl "https://www.googleapis.com/customsearch/v1?key=YOUR_API_KEY&cx=YOUR_SEARCH_ENGINE_ID&q=test&searchType=shopping"
 ```
 
 ### 生产环境
@@ -78,8 +88,9 @@ curl "https://shoppingcontent.googleapis.com/content/v2.1/products/search?q=test
 ## 成本控制
 
 ### 免费配额
-- 每天1000次请求免费
-- 超出部分按使用量计费
+- 每天100次请求免费
+- 付费版本：$5/1000 queries
+- 适合中小型应用使用
 
 ### 优化建议
 - 实现智能缓存
@@ -118,5 +129,6 @@ curl "https://shoppingcontent.googleapis.com/content/v2.1/products/search?q=test
 
 ## 联系支持
 - Google Cloud支持：https://cloud.google.com/support
-- API文档：https://developers.google.com/shopping-content
-- 社区论坛：https://stackoverflow.com/questions/tagged/google-shopping-api
+- Custom Search API文档：https://developers.google.com/custom-search
+- 搜索引擎创建：https://programmablesearchengine.google.com/
+- 社区论坛：https://stackoverflow.com/questions/tagged/google-custom-search-api

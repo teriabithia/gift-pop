@@ -8,15 +8,15 @@ import {
 import { Gift } from '../types'
 import { mockGifts } from '../mock-data'
 import { getRealAmazonProducts } from '../real-amazon-products'
-import { googleShoppingService } from '../google-shopping-api'
+import { serpApiService } from '../serpapi-service'
 
 export class RecommendationService {
   private static instance: RecommendationService
   private cache = new Map<string, { data: Gift[], timestamp: number }>()
   private readonly CACHE_TTL = 30 * 60 * 1000 // 30分钟缓存
 
-  // Use Google Shopping API to get real products based on AI-generated search terms
-  private async getGoogleShoppingProducts(gifts: Gift[]): Promise<Gift[]> {
+  // Use SerpApi to get real products based on AI-generated search terms
+  private async getSerpApiProducts(gifts: Gift[]): Promise<Gift[]> {
     const enhancedGifts: Gift[] = []
     
     for (const gift of gifts) {
@@ -24,21 +24,21 @@ export class RecommendationService {
         // Use searchTerm if available, otherwise use name
         const searchTerm = gift.searchTerm || gift.name || 'gift'
         
-        // Get real products from Google Shopping
-        const googleProducts = await googleShoppingService.searchProducts(searchTerm, 1)
+        // Get real products from SerpApi Google Product search
+        const serpProducts = await serpApiService.searchProducts(searchTerm, 1)
         
-        if (googleProducts.length > 0) {
-          // Use the first Google Shopping result
-          const googleProduct = googleProducts[0]
+        if (serpProducts.length > 0) {
+          // Use the first SerpApi result
+          const serpProduct = serpProducts[0]
           enhancedGifts.push({
             ...gift,
-            name: gift.name || googleProduct.name,
-            brand: gift.brand || googleProduct.brand,
-            price: gift.price > 0 ? gift.price : googleProduct.price,
-            image: gift.image || googleProduct.image,
-            shopUrl: googleProduct.shopUrl, // Real shopping link from Google
-            rating: gift.rating > 0 ? gift.rating : googleProduct.rating,
-            reviewCount: gift.reviewCount > 0 ? gift.reviewCount : googleProduct.reviewCount
+            name: gift.name || serpProduct.name,
+            brand: gift.brand || serpProduct.brand,
+            price: gift.price > 0 ? gift.price : serpProduct.price,
+            image: gift.image || serpProduct.image,
+            shopUrl: serpProduct.shopUrl, // Real shopping link from SerpApi
+            rating: gift.rating > 0 ? gift.rating : serpProduct.rating,
+            reviewCount: gift.reviewCount > 0 ? gift.reviewCount : serpProduct.reviewCount
           })
         } else {
           // Fallback to original gift data with Google Shopping search link
@@ -48,7 +48,7 @@ export class RecommendationService {
           })
         }
       } catch (error) {
-        console.warn(`Failed to get Google Shopping data for ${gift.name}:`, error)
+        console.warn(`Failed to get SerpApi data for ${gift.name}:`, error)
         // Fallback to original gift data with Google Shopping search link
         const searchTerm = gift.searchTerm || gift.name || 'gift'
         enhancedGifts.push({
@@ -240,8 +240,8 @@ export class RecommendationService {
         throw new Error('No recommendations received')
       }
 
-      // Use Google Shopping API to get real products
-      const validatedGifts = await this.getGoogleShoppingProducts(gifts)
+      // Use SerpApi to get real products
+      const validatedGifts = await this.getSerpApiProducts(gifts)
 
       // 缓存结果
       this.setCache(cacheKey, validatedGifts)
@@ -283,8 +283,8 @@ export class RecommendationService {
         throw new Error('No popular gifts received')
       }
 
-      // Use Google Shopping API to get real products
-      const validatedGifts = await this.getGoogleShoppingProducts(gifts)
+      // Use SerpApi to get real products
+      const validatedGifts = await this.getSerpApiProducts(gifts)
 
       // 缓存结果
       this.setCache(cacheKey, validatedGifts)
@@ -326,8 +326,8 @@ export class RecommendationService {
         throw new Error('No occasion gifts received')
       }
 
-      // Use Google Shopping API to get real products
-      const validatedGifts = await this.getGoogleShoppingProducts(gifts)
+      // Use SerpApi to get real products
+      const validatedGifts = await this.getSerpApiProducts(gifts)
 
       // 缓存结果
       this.setCache(cacheKey, validatedGifts)
