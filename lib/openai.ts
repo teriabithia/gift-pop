@@ -11,7 +11,7 @@ export const openai = new OpenAI({
 export const OPENAI_CONFIG = {
   model: 'gpt-4o-mini', // Use cost-effective model
   temperature: 0.1, // Lower temperature for more consistent JSON
-  max_tokens: 1000, // Reduced to ensure complete responses
+  max_tokens: 4000, // Increased to handle 24 gifts without truncation
   top_p: 0.5, // More focused responses
 } as const
 

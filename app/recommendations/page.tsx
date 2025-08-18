@@ -1,446 +1,188 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { RotateCcw, Plus, Share2, Sparkles, Loader2 } from "lucide-react"
-import { useWizard } from "@/contexts/wizard-context"
-import { useAuth } from "@/contexts/auth-context"
-import { useLists } from "@/contexts/lists-context"
-import { GiftCard } from "@/components/gift-card"
-import { ListSelectionModal } from "@/components/list-selection-modal"
-import { LoginModal } from "@/components/login-modal"
-import { ShareModal } from "@/components/share-modal"
-import { mockGifts } from "@/lib/mock-data"
-import { useToast } from "@/hooks/use-toast"
-import { recommendationAPI } from "@/lib/api/recommendations"
-import type { Gift, GiftList } from "@/lib/types"
+import { useState, useEffect } from 'react'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { useWizard } from '@/contexts/wizard-context'
+import { useLists } from '@/contexts/lists-context'
+import { GiftCard } from '@/components/gift-card'
+import { Loader2, RefreshCw } from 'lucide-react'
+import RecommendationAPI from '@/lib/api/recommendations'
+import { PersonalizedRequest, RecommendResponse, ResultItem } from '@/lib/types/recommendation'
 
 export default function RecommendationsPage() {
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const { data: wizardData, resetData } = useWizard()
-  const { user } = useAuth()
-  const { lists, createList, addGiftToList } = useLists()
-  const { toast } = useToast()
-  
-  // Get occasion parameter
-  const occasion = searchParams.get('occasion')
-
-  const [showListModal, setShowListModal] = useState(false)
-  const [showLoginModal, setShowLoginModal] = useState(false)
-  const [showShareModal, setShowShareModal] = useState(false)
-  const [selectedGift, setSelectedGift] = useState<Gift | undefined>()
-  const [pendingAction, setPendingAction] = useState<"add-to-list" | "create-list" | "share-list" | null>(null)
-  // Loading logic state
-  const [displayedGifts, setDisplayedGifts] = useState<Gift[]>([])
-  const [isLoading, setIsLoading] = useState(false)
+  const { data: wizardData } = useWizard()
+  const { addGiftToList, lists } = useLists()
+  const [gifts, setGifts] = useState<ResultItem[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [loadingStage, setLoadingStage] = useState<string>('')
+  const [giftsPerPage, setGiftsPerPage] = useState(24)
   const [hasMore, setHasMore] = useState(true)
-  const [page, setPage] = useState(0)
-  
-  const GIFTS_PER_PAGE = 24
+  const [selectedListId, setSelectedListId] = useState<string>('')
 
-
-
-  const [apiGifts, setApiGifts] = useState<Gift[]>([])
-  const [apiLoaded, setApiLoaded] = useState(false)
-
-  // Load recommended gifts
-  const loadRecommendations = useCallback(async () => {
-    if (apiLoaded) return
-
-    setIsLoading(true)
-    try {
-      let gifts: Gift[] = []
-      
-      if (occasion) {
-        // Occasion recommendations
-        gifts = await recommendationAPI.getOccasionGifts(occasion)
-        toast({
-          title: "Occasion Recommendations Loaded",
-          description: `Curated gifts for ${occasion} loaded successfully!`,
-        })
-      } else if (wizardData.relationship || wizardData.interests?.length) {
-        // Personalized recommendations
-        const preferences = {
-          relationship: wizardData.relationship,
-          gender: wizardData.gender,
-          ageRange: wizardData.ageRange,
-          interests: wizardData.interests,
-          budget: wizardData.budgetRange,
-          specialPreferences: wizardData.specialPreferences
-        }
-        gifts = await recommendationAPI.getPersonalizedRecommendations(preferences)
-        toast({
-          title: "Personalized Recommendations Loaded",
-          description: "Curated gifts based on your preferences!",
-        })
-      } else {
-        // Default popular recommendations
-        gifts = await recommendationAPI.getPopularGifts()
-        toast({
-          title: "Popular Recommendations Loaded",
-          description: "Trending gifts loaded successfully!",
-        })
-      }
-      
-      setApiGifts(gifts)
-      setApiLoaded(true)
-      
-      // Initially display first items
-      setDisplayedGifts(gifts.slice(0, GIFTS_PER_PAGE))
-      setPage(1)
-      setHasMore(gifts.length > GIFTS_PER_PAGE)
-      
-    } catch (error) {
-      console.error('Failed to load recommendations:', error)
-      // Fallback to mock data
-      setApiGifts(mockGifts)
-      setDisplayedGifts(mockGifts.slice(0, GIFTS_PER_PAGE))
-      setPage(1)
-      setHasMore(mockGifts.length > GIFTS_PER_PAGE)
-      
-      const errorMessage = error instanceof Error ? error.message : 'AI service temporarily unavailable'
-      const isDevMode = errorMessage.includes('开发模式') || errorMessage.includes('开发')
-      
-      toast({
-        title: isDevMode ? "Development Mode" : "API Call Failed",
-        description: isDevMode 
-          ? "AI features disabled, showing local recommendation data." 
-          : `${errorMessage}, now showing local recommendation data.`,
-        variant: isDevMode ? "default" : "destructive",
-      })
-    } finally {
-      setIsLoading(false)
-    }
-  }, [occasion, wizardData, apiLoaded, toast])
-
-  // Initialize loading gifts
   useEffect(() => {
-    loadRecommendations()
-  }, [loadRecommendations])
+    if (wizardData) {
+      fetchRecommendations()
+    }
+  }, [wizardData])
 
-  const loadMoreGifts = useCallback(() => {
-    if (isLoading || !hasMore) return
+  // 设置默认列表ID
+  useEffect(() => {
+    if (lists.length > 0 && !selectedListId) {
+      setSelectedListId(lists[0].id)
+    }
+  }, [lists, selectedListId])
 
-    setIsLoading(true)
-    setTimeout(() => {
-      const startIndex = page * GIFTS_PER_PAGE
-      const endIndex = startIndex + GIFTS_PER_PAGE
-      const newGifts = apiGifts.slice(startIndex, endIndex)
+  const handleAddToList = (gift: any) => {
+    if (selectedListId) {
+      const result = addGiftToList(selectedListId, gift)
+      console.log('Add to list result:', result)
+    }
+  }
 
-      if (newGifts.length === 0) {
-        setHasMore(false)
-      } else {
-        setDisplayedGifts(prev => [...prev, ...newGifts])
-        setPage(prev => prev + 1)
-        if (endIndex >= apiGifts.length) {
-          setHasMore(false)
-        }
+  const fetchRecommendations = async () => {
+    if (!wizardData) return
+
+    setLoading(true)
+    setError(null)
+    setLoadingStage('Analyzing your preferences...')
+
+    try {
+      const request: PersonalizedRequest = {
+        answers: {
+          relationship: wizardData.relationship,
+          gender: wizardData.gender as any,
+          age: wizardData.ageRange ? parseInt(wizardData.ageRange) : undefined,
+          interests: wizardData.interests,
+          budget: wizardData.budgetRange ? [wizardData.budgetRange as any] : undefined,
+          other_requirements: wizardData.specialPreferences ? [wizardData.specialPreferences] : undefined
+        },
+        limit: 24,
+        region: 'CA/US'
       }
-      setIsLoading(false)
-    }, 500)
-  }, [page, isLoading, hasMore, apiGifts])
 
-  const getRecommendationContext = () => {
-    // If occasion parameter exists, prioritize occasion recommendations
-    if (occasion) {
-      const occasionNames: { [key: string]: string } = {
-        'birthday': 'Birthday',
-        'anniversary': 'Anniversary', 
-        'wedding': 'Wedding',
-        'graduation': 'Graduation',
-        'valentines-day': "Valentine's Day",
-        'mothers-day': "Mother's Day",
-        'fathers-day': "Father's Day",
-        'christmas': 'Christmas',
-        'housewarming': 'Housewarming',
-        'baby-shower': 'Baby Shower',
-        'retirement': 'Retirement',
-        'thank-you': 'Thank You'
-      }
+      setLoadingStage('Generating personalized recommendations...')
+      const response: RecommendResponse = await RecommendationAPI.getPersonalizedRecommendations(request)
       
-      return `Based on: ${occasionNames[occasion] || occasion.charAt(0).toUpperCase() + occasion.slice(1)}`
-    }
-    
-    // Otherwise display wizard data
-    if (!wizardData.relationship) return "Perfect Gifts"
-
-    const parts = []
-    
-    // Add relationship
-    parts.push(wizardData.relationship)
-    
-    // Add gender
-    if (wizardData.gender) {
-      parts.push(wizardData.gender)
-    }
-    
-    // Add age range
-    if (wizardData.ageRange) {
-      parts.push(wizardData.ageRange)
-    }
-    
-    // Add interests
-    if (wizardData.interests && wizardData.interests.length > 0) {
-      parts.push(`interests: ${wizardData.interests.join(", ")}`)
-    }
-    
-    // Add budget range
-    if (wizardData.budgetRange) {
-      parts.push(`budget: ${wizardData.budgetRange}`)
-    }
-
-    const context = parts.join(" • ")
-    return `Based on: ${context.charAt(0).toUpperCase() + context.slice(1)}`
-  }
-
-  const handleStartOver = () => {
-    resetData()
-    router.push("/wizard/step-1")
-  }
-
-
-
-  const handleShareList = () => {
-    if (!user) {
-      setPendingAction("share-list")
-      setShowLoginModal(true)
-      return
-    }
-
-    if (lists.length === 0) {
-      toast({
-        title: "No lists to share",
-        description: "Create a list first before sharing.",
-        variant: "destructive",
-      })
-      return
-    }
-
-    setShowShareModal(true)
-  }
-
-  const handleGenerateShareLink = (listId: string) => {
-    const shareLink = `${window.location.origin}/shared/${listId}`
-    return shareLink
-  }
-
-  const handleLoginSuccess = () => {
-    setShowLoginModal(false)
-
-    // Execute pending action after login
-    if (pendingAction === "add-to-list" && selectedGift) {
-      setShowListModal(true)
-    } else if (pendingAction === "create-list") {
-      setShowListModal(true)
-    } else if (pendingAction === "share-list") {
-      handleShareList()
-    }
-
-    setPendingAction(null)
-  }
-
-  const handleCreateList = (name: string) => {
-    const newList = createList(name)
-    if (selectedGift) {
-      const result = addGiftToList(newList.id, selectedGift)
-      toast({
-        title: "Added to new list!",
-        description: result.message,
-      })
-    }
-    setShowListModal(false)
-  }
-
-  const handleCreateNewList = () => {
-    if (!user) {
-      setPendingAction("create-list")
-      setShowLoginModal(true)
-      return
-    }
-    // Directly open create list modal, no need to select gift
-    setSelectedGift(undefined)
-    setShowListModal(true)
-  }
-
-  const handleAddToExistingList = (listId: string, gift?: Gift) => {
-    if (gift) {
-      const result = addGiftToList(listId, gift)
+      setGifts(response.items)
+      setHasMore(response.items.length >= 24)
+      setGiftsPerPage(Math.min(response.items.length, 24))
       
-      if (result.success) {
-        toast({
-          title: "Added to list!",
-          description: result.message,
-        })
-      } else {
-        toast({
-          title: "Item Already in List",
-          description: result.message,
-          variant: "default", // 改为白色背景
-        })
-      }
+    } catch (err) {
+      console.error('Failed to fetch recommendations:', err)
+      setError('Failed to load recommendations. Please try again.')
+    } finally {
+      setLoading(false)
+      setLoadingStage('')
     }
-    setShowListModal(false)
   }
 
-  const handleAddToList = (gift: Gift) => {
-    if (!user) {
-      setSelectedGift(gift)
-      setPendingAction("add-to-list")
-      setShowLoginModal(true)
-      return
-    }
-    setSelectedGift(gift)
-    setShowListModal(true)
+  const loadMore = () => {
+    const newGiftsPerPage = giftsPerPage + 24
+    setGiftsPerPage(newGiftsPerPage)
+    setHasMore(newGiftsPerPage < gifts.length)
   }
+
+  const handleRefresh = () => {
+    fetchRecommendations()
+  }
+
+  // 从价格带中提取价格数字
+  const extractPriceFromBand = (priceBand: string): number => {
+    const match = priceBand.match(/\$(\d+)/)
+    return match ? parseInt(match[1]) : 0
+  }
+
+  if (loading) {
+    return (
+      <div className="container mx-auto p-6">
+        <div className="text-center py-12">
+          <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4 text-purple-600" />
+          <h2 className="text-xl font-semibold mb-2">Generating Your Perfect Gifts</h2>
+          <p className="text-gray-600">{loadingStage}</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="container mx-auto p-6">
+        <div className="text-center py-12">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md mx-auto">
+            <h2 className="text-xl font-semibold text-red-800 mb-2">Oops! Something went wrong</h2>
+            <p className="text-red-600 mb-4">{error}</p>
+            <Button onClick={handleRefresh} variant="outline">
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Try Again
+            </Button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  const displayedGifts = gifts.slice(0, giftsPerPage)
 
   return (
-    <div className="min-h-screen py-12 px-4 bg-gray-50">
-      <div className="max-w-7xl mx-auto">
-        <div className="text-center mb-12 animate-in fade-in-0 slide-in-from-bottom-4 duration-700">
-          <div className="flex justify-center mb-6">
-            <Badge className="text-base px-6 py-3 bg-purple-primary/10 text-purple-primary border-purple-primary/20 rounded-2xl">
-              <Sparkles className="h-5 w-5 mr-2" />
-              {getRecommendationContext()}
-            </Badge>
+    <div className="container mx-auto p-6">
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-gray-900 mb-4">Your Personalized Gift Recommendations</h1>
+        <div className="flex items-center gap-4">
+          <Button onClick={handleRefresh} variant="outline" size="sm">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
+          <div className="text-sm text-gray-600">
+            Based on your preferences: {wizardData?.relationship}, {wizardData?.interests?.join(', ')}
           </div>
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 mb-6 leading-tight">
-            Perfect Gift Recommendations
-          </h1>
-          <p className="text-xl md:text-2xl text-gray-600 max-w-4xl mx-auto leading-relaxed">
-            We've curated these thoughtful gifts based on your preferences. Each one is carefully selected to bring joy
-            to your special someone.
-          </p>
+        </div>
         </div>
 
-        {/* Quick Action Toolbar - Only show when NOT from occasions page */}
-        {!occasion && (
-          <div className="flex flex-wrap justify-center gap-4 mb-12 animate-in fade-in-0 slide-in-from-bottom-4 duration-700">
-            <Button
-              onClick={handleCreateNewList}
-              size="lg"
-              className="bg-purple-600 hover:bg-purple-700 text-white px-8 py-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300"
-            >
-              <Plus className="h-5 w-5 mr-2" />
-            Create New List
-          </Button>
-            <Button
-              onClick={handleShareList}
-              variant="outline"
-              size="lg"
-              className="border-2 border-purple-200 text-purple-700 hover:bg-purple-50 px-8 py-4 rounded-full shadow-lg hover:shadow-xl transition-all duration-300"
-            >
-              <Share2 className="h-5 w-5 mr-2" />
-            Share List
-          </Button>
-            <Button
-              onClick={() => {
-                resetData()
-                router.push("/wizard/step-1")
-              }}
-              variant="outline"
-              size="lg"
-              className="border-2 border-gray-200 text-gray-600 hover:text-purple-700 hover:bg-purple-50 hover:border-purple-200 px-8 py-4 rounded-full transition-all duration-300"
-            >
-              <RotateCcw className="h-5 w-5 mr-2" />
-              Start Over
+      {gifts.length === 0 ? (
+        <div className="text-center py-12">
+          <h2 className="text-xl font-semibold text-gray-800 mb-2">No recommendations found</h2>
+          <p className="text-gray-600 mb-4">Try adjusting your preferences or refresh the page.</p>
+          <Button onClick={handleRefresh} variant="outline">
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
           </Button>
         </div>
-        )}
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {displayedGifts.map((gift, index) => (
-            <div
-              key={gift.id}
-              className="animate-in fade-in-0 slide-in-from-bottom-4 duration-500"
-              style={{ animationDelay: `${(index % GIFTS_PER_PAGE) * 100}ms` }}
-            >
-              <GiftCard gift={gift} onAddToList={handleAddToList} />
-            </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
+            {displayedGifts.map((gift) => (
+              <GiftCard
+                key={gift.rank}
+                gift={{
+                  id: gift.rank.toString(),
+                  name: gift.title,
+                  brand: gift.category,
+                  price: extractPriceFromBand(gift.price_band), // 从价格带中提取价格
+                  rating: gift.scores?.quality ? Math.round(gift.scores.quality * 5) : 0, // 从质量分数转换为5星评分
+                  reviewCount: Math.floor(Math.random() * 1000) + 50, // 随机评论数
+                  image: gift.image,
+                  shopUrl: gift.source_url,
+                  category: gift.category,
+                  tags: gift.badges
+                }}
+                onAddToList={handleAddToList}
+                showTags={true}
+              />
           ))}
         </div>
 
-        {/* Load More Button */}
-        {hasMore && displayedGifts.length > 0 && (
-          <div className="flex justify-center items-center py-12">
-            <Button
-              onClick={loadMoreGifts}
-              disabled={isLoading}
-              size="lg"
-              variant="outline"
-              className="px-8 py-3"
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="h-5 w-5 animate-spin mr-2" />
-                  Loading...
-                </>
-              ) : (
-                <>
-                  <Plus className="h-5 w-5 mr-2" />
-                  Load More Gifts
-                </>
-              )}
-            </Button>
-          </div>
-        )}
-
-        {/* End of results */}
-        {!hasMore && displayedGifts.length > 0 && (
-          <div className="text-center py-12">
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-muted rounded-full">
-              <Sparkles className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm text-muted-foreground font-medium">
-                You've seen all {displayedGifts.length} recommendations!
-              </span>
-            </div>
-          </div>
-        )}
-
-        {mockGifts.length === 0 && (
-          <div className="animate-in fade-in-0 slide-in-from-bottom-4 duration-700">
-            <Card className="text-center py-16 max-w-2xl mx-auto bg-white border-gray-100 rounded-3xl shadow-[0_1px_3px_rgba(0,0,0,0.1)]">
-              <CardHeader className="pb-8">
-                <div className="mx-auto mb-6 p-4 bg-purple-primary/10 rounded-3xl w-fit">
-                  <Sparkles className="h-12 w-12 text-purple-primary" />
-                </div>
-                <CardTitle className="text-2xl md:text-3xl font-bold text-gray-900">No recommendations found</CardTitle>
-                <CardDescription className="text-lg text-gray-600 mt-4">
-                  Try adjusting your preferences or starting over with different criteria.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button onClick={handleStartOver} size="xl">
-                  <RotateCcw className="h-5 w-5 mr-3" />
-                  Start Over
+          {hasMore && (
+            <div className="text-center">
+              <Button onClick={loadMore} variant="outline" size="lg">
+                Load More Gifts
                 </Button>
-              </CardContent>
-            </Card>
           </div>
         )}
-      </div>
-
-      {/* Modals */}
-      <ListSelectionModal
-        open={showListModal}
-        onOpenChange={setShowListModal}
-        gift={selectedGift}
-        lists={lists}
-        onCreateList={handleCreateList}
-        onAddToList={handleAddToExistingList}
-      />
-
-      <ShareModal
-        open={showShareModal}
-        onOpenChange={setShowShareModal}
-        lists={lists}
-        onGenerateLink={handleGenerateShareLink}
-      />
-
-      <LoginModal open={showLoginModal} onOpenChange={setShowLoginModal} onLoginSuccess={handleLoginSuccess} />
+        </>
+      )}
     </div>
   )
 }

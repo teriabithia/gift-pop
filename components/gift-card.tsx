@@ -10,7 +10,7 @@ import type { Gift } from "@/lib/types"
 import { useAuth } from "@/contexts/auth-context"
 import { useToast } from "@/hooks/use-toast"
 import { useLists } from "@/contexts/lists-context"
-import { ShoppingModal } from "./shopping-modal"
+
 
 interface GiftCardProps {
   gift: Gift
@@ -24,7 +24,7 @@ export function GiftCard({ gift, onAddToList, showCategoryBadge = true, showTags
   const { lists } = useLists()
   const { toast } = useToast()
   const [isAdding, setIsAdding] = useState(false)
-  const [showShoppingModal, setShowShoppingModal] = useState(false)
+
 
     // 不再检查是否已在清单中，允许重复添加
 
@@ -63,8 +63,25 @@ export function GiftCard({ gift, onAddToList, showCategoryBadge = true, showTags
   }
 
   const handleShopNow = () => {
-    // Open shopping modal instead of direct link
-    setShowShoppingModal(true)
+    // 直接跳转到商品的购物链接
+    if (gift.shopUrl && gift.shopUrl !== '#') {
+      // 在新标签页打开购物链接
+      window.open(gift.shopUrl, '_blank', 'noopener,noreferrer')
+      
+      // 显示成功提示
+      toast({
+        title: "Opening shopping link",
+        description: `Redirecting to ${gift.brand || 'the store'}...`,
+        variant: "default",
+      })
+    } else {
+      // 如果没有购物链接，显示错误提示
+      toast({
+        title: "Shopping link not available",
+        description: "This product's shopping link is currently unavailable.",
+        variant: "destructive",
+      })
+    }
   }
 
   return (
@@ -147,11 +164,7 @@ export function GiftCard({ gift, onAddToList, showCategoryBadge = true, showTags
         </div>
       </CardContent>
       
-      <ShoppingModal
-        gift={gift}
-        isOpen={showShoppingModal}
-        onClose={() => setShowShoppingModal(false)}
-      />
+
     </Card>
   )
 }
