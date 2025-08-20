@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { useWizard } from "@/contexts/wizard-context"
@@ -28,6 +28,14 @@ const relationships = [
 const genders = ["Male", "Female", "Non-binary", "Prefer not to say"]
 
 export default function WizardStep1() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <WizardStep1Content />
+    </Suspense>
+  )
+}
+
+function WizardStep1Content() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { data, updateData, clearData } = useWizard()

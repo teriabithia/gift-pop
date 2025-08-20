@@ -16,7 +16,8 @@ model User {
   id            String    @id @default(cuid())
   email         String    @unique
   name          String?
-  avatar        String?
+  image         String?   // NextAuth标准字段名
+  password      String?   // 用于用户名密码登录
   provider      String?   @default("email")
   providerId    String?   @map("provider_id")
   emailVerified DateTime? @map("email_verified")
@@ -40,15 +41,15 @@ model Account {
   type              String
   provider          String
   providerAccountId String  @map("provider_account_id")
-  refreshToken      String? @map("refresh_token")
-  accessToken       String? @map("access_token")
-  expiresAt         Int?    @map("expires_at")
-  tokenType         String? @map("token_type")
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
   scope             String?
-  idToken           String? @map("id_token")
-  sessionState      String? @map("session_state")
-  createdAt         DateTime @default(now()) @map("created_at")
-  updatedAt         DateTime @updatedAt @map("updated_at")
+  id_token          String?
+  session_state     String?
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 

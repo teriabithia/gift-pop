@@ -25,7 +25,7 @@ async function main() {
       id: 'demo-user-1',
       email: 'demo@giftpop.com',
       name: 'Demo User',
-      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=demo',
+      image: 'https://api.dicebear.com/7.x/avataaars/svg?seed=demo',
       emailVerified: new Date(),
     },
   })

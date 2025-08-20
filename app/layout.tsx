@@ -2,9 +2,7 @@ import type React from "react"
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
-import { AuthProvider } from "@/contexts/auth-context"
-import { ListsProvider } from "@/contexts/lists-context"
-import { WizardProvider } from "@/contexts/wizard-context"
+import { Providers } from "@/components/providers"
 import { Navigation } from "@/components/navigation"
 import { Toaster } from "@/components/ui/toaster"
 
@@ -29,15 +27,11 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} antialiased`}>
       <body className="font-sans">
-        <AuthProvider>
-          <ListsProvider>
-            <WizardProvider>
-              <Navigation />
-              <main className="pt-16">{children}</main>
-              <Toaster />
-            </WizardProvider>
-          </ListsProvider>
-        </AuthProvider>
+        <Providers>
+          <Navigation />
+          <main className="pt-16">{children}</main>
+          <Toaster />
+        </Providers>
       </body>
     </html>
   )

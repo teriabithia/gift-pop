@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -19,6 +19,14 @@ import { recommendationAPI } from "@/lib/api/recommendations"
 import type { Gift, GiftList } from "@/lib/types"
 
 export default function RecommendationsPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <RecommendationsContent />
+    </Suspense>
+  )
+}
+
+function RecommendationsContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { data: wizardData, resetData } = useWizard()
@@ -41,8 +49,6 @@ export default function RecommendationsPage() {
   const [page, setPage] = useState(0)
   
   const GIFTS_PER_PAGE = 24
-
-
 
   const [apiGifts, setApiGifts] = useState<Gift[]>([])
   const [apiLoaded, setApiLoaded] = useState(false)
@@ -201,8 +207,6 @@ export default function RecommendationsPage() {
     resetData()
     router.push("/wizard/step-1")
   }
-
-
 
   const handleShareList = () => {
     if (!user) {

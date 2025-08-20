@@ -69,13 +69,11 @@ export function LoginModal({ open, onOpenChange, onLoginSuccess }: LoginModalPro
 
   const handleGoogleLogin = async () => {
     try {
+      // Google登录会重定向，不需要在这里显示成功toast
+      // toast会在AuthContext中用户状态变化时显示
       await googleLogin()
       onOpenChange(false)
       onLoginSuccess?.()
-      toast({
-        title: "Welcome!",
-        description: "You've been successfully logged in with Google.",
-      })
     } catch (error) {
       toast({
         title: "Google login failed",

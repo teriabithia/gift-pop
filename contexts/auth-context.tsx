@@ -1,54 +1,67 @@
 "use client"
 
-import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
+import { createContext, useContext, useState, useEffect, type ReactNode, useRef } from "react"
+import { useSession, signIn, signOut, getSession } from "next-auth/react"
 import type { User, AuthState } from "@/lib/types"
+import { toast } from "@/hooks/use-toast"
 
 interface ExtendedAuthState extends AuthState {
   googleLogin: () => Promise<void>
   resetPassword: (email: string) => Promise<void>
+  register: (email: string, password: string, name: string) => Promise<void>
 }
 
 const AuthContext = createContext<ExtendedAuthState | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
+  const { data: session, status } = useSession()
   const [isLoading, setIsLoading] = useState(true)
+  const previousUser = useRef<User | null>(null)
 
   useEffect(() => {
-    // Check for existing session on mount
-    const savedUser = localStorage.getItem("giftpop-user")
-    if (savedUser) {
-      try {
-        setUser(JSON.parse(savedUser))
-      } catch (error) {
-        console.error("Failed to parse saved user:", error)
-        localStorage.removeItem("giftpop-user")
-      }
+    if (status !== "loading") {
+      setIsLoading(false)
     }
-    setIsLoading(false)
-  }, [])
+    // 如果正在认证过程中，保持loading状态
+    if (status === "loading") {
+      setIsLoading(true)
+    }
+  }, [status])
+
+  // Debug: Log session data
+  useEffect(() => {
+    console.log("AuthContext - Session status:", status)
+    console.log("AuthContext - Session data:", session)
+    if (session?.user) {
+      console.log("AuthContext - User data:", {
+        id: (session.user as any).id,
+        email: session.user.email,
+        name: session.user.name,
+        image: session.user.image
+      })
+    }
+  }, [session, status])
+
+
 
   const login = async (email: string, password: string) => {
     setIsLoading(true)
     try {
-      // Simulate API call delay
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      const result = await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
+      })
 
-      // Mock login validation
-      if (email === "demo@giftpop.com" && password === "password") {
-        const mockUser: User = {
-          id: "1",
-          email,
-          name: "Demo User",
-          avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}`,
-        }
-        setUser(mockUser)
-        localStorage.setItem("giftpop-user", JSON.stringify(mockUser))
-      } else {
-        throw new Error("Invalid credentials")
+      if (result?.error) {
+        throw new Error(result.error)
+      }
+
+      if (!result?.ok) {
+        throw new Error("Login failed")
       }
     } catch (error) {
-      throw new Error("Login failed")
+      throw new Error("Invalid credentials")
     } finally {
       setIsLoading(false)
     }
@@ -57,43 +70,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const register = async (email: string, password: string, name: string) => {
     setIsLoading(true)
     try {
-      // Simulate API call delay
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      const response = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password, name }),
+      })
 
-      // Mock registration - replace with real authentication
-      const mockUser: User = {
-        id: Date.now().toString(),
-        email,
-        name,
-        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}`,
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "Registration failed")
       }
-      setUser(mockUser)
-      localStorage.setItem("giftpop-user", JSON.stringify(mockUser))
+
+      // After successful registration, sign in the user
+      await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
+      })
     } catch (error) {
-      throw new Error("Registration failed")
+      throw new Error(error instanceof Error ? error.message : "Registration failed")
     } finally {
       setIsLoading(false)
     }
   }
 
   const googleLogin = async () => {
-    setIsLoading(true)
     try {
-      // Simulate Google OAuth flow
-      await new Promise((resolve) => setTimeout(resolve, 1500))
-
-      const mockGoogleUser: User = {
-        id: "google_" + Date.now(),
-        email: "user@gmail.com",
-        name: "Google User",
-        avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=google",
-      }
-      setUser(mockGoogleUser)
-      localStorage.setItem("giftpop-user", JSON.stringify(mockGoogleUser))
+      // 直接重定向到Google登录，不使用async/await
+      signIn("google", { callbackUrl: window.location.origin })
     } catch (error) {
       throw new Error("Google login failed")
-    } finally {
-      setIsLoading(false)
     }
   }
 
@@ -113,9 +122,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const logout = () => {
-    setUser(null)
-    localStorage.removeItem("giftpop-user")
+    signOut({ redirect: false })
   }
+
+  // Transform NextAuth session to our User type
+  const user: User | null = session?.user ? {
+    id: (session.user as any).id || session.user.email || "",
+    email: session.user.email || "",
+    name: session.user.name || "",
+    image: session.user.image || "",
+  } : null
+
+  // Debug: Log transformed user data
+  useEffect(() => {
+    console.log("AuthContext - Transformed user:", user)
+  }, [user])
+
+  // Show login success toast when user logs in
+  useEffect(() => {
+    // 如果之前没有用户，现在有用户了，说明刚刚登录成功
+    if (!previousUser.current && user && status === "authenticated") {
+      toast({
+        title: "Welcome!",
+        description: `Hello ${user.name || user.email}! You've successfully logged in.`,
+      })
+    }
+    previousUser.current = user
+  }, [user, status])
 
   return (
     <AuthContext.Provider
