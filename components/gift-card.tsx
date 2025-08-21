@@ -63,8 +63,13 @@ export function GiftCard({ gift, onAddToList, showCategoryBadge = true, showTags
   }
 
   const handleShopNow = () => {
-    // Open shopping modal instead of direct link
-    setShowShoppingModal(true)
+    // Direct link to eBay product page
+    if (gift.shopUrl) {
+      window.open(gift.shopUrl, '_blank', 'noopener,noreferrer')
+    } else {
+      // Fallback: open shopping modal if no direct link
+      setShowShoppingModal(true)
+    }
   }
 
   return (

@@ -29,6 +29,10 @@ export interface Gift {
   searchTerm?: string // AI生成的搜索关键词
   category?: string
   tags?: string[] | string // 支持数组或JSON字符串格式
+  // OpenAI analysis fields
+  selectionReason?: string
+  giftScore?: number
+  matchFactors?: string[]
 }
 
 export interface WizardData {

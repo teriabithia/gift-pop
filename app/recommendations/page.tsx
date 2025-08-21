@@ -70,12 +70,24 @@ function RecommendationsContent() {
         })
       } else if (wizardData.relationship || wizardData.interests?.length) {
         // Personalized recommendations
+        // Parse budget range from string to object
+        let budget: { min: number; max: number } | undefined
+        if (wizardData.budgetRange) {
+          const match = wizardData.budgetRange.match(/\$(\d+)\s*-\s*\$(\d+)/)
+          if (match) {
+            budget = {
+              min: parseInt(match[1]),
+              max: parseInt(match[2])
+            }
+          }
+        }
+
         const preferences = {
           relationship: wizardData.relationship,
           gender: wizardData.gender,
           ageRange: wizardData.ageRange,
           interests: wizardData.interests,
-          budget: wizardData.budgetRange,
+          budget: budget,
           specialPreferences: wizardData.specialPreferences
         }
         gifts = await recommendationAPI.getPersonalizedRecommendations(preferences)
