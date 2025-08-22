@@ -233,32 +233,25 @@ async function analyzeEbayResults(ebayResults: any[], occasion: string) {
       return transformEbayResults(ebayResults.slice(0, 24)) // 返回转换后的前24个结果
     }
 
-    const prompt = `分析以下eBay商品搜索结果，为${occasion}场合选择最合适的24个礼物。考虑：
+    const prompt = `为${occasion}场合选择最合适的24个礼物。
+
+考虑因素：
 1. 商品相关性
 2. 价格合理性
 3. 评价和评分
 4. 商品质量
 
-请返回JSON格式的结果，每个商品必须包含以下字段：
+返回JSON格式，每个商品包含：
 - id: 商品ID (字符串)
 - name: 商品名称 (字符串)
-- price: 价格 (数字，不要包含货币符号)
+- price: 价格 (数字)
 - image: 图片URL (字符串)
-- rating: 评分 (数字，范围0-5)
+- rating: 评分 (数字，0-5)
 - reviewCount: 评价数量 (数字)
 - shopUrl: 商品链接 (字符串)
 - brand: 品牌 (字符串)
 
-确保所有数值字段都是数字类型，不要包含引号。
-
-商品数据：${JSON.stringify(ebayResults.slice(0, 20).map(item => ({
-  itemId: item.itemId,
-  title: item.title,
-  price: item.price,
-  image: item.image,
-  itemWebUrl: item.itemWebUrl,
-  seller: item.seller
-})))}`
+确保所有数值字段都是数字类型。`
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -269,7 +262,8 @@ async function analyzeEbayResults(ebayResults: any[], occasion: string) {
       body: JSON.stringify({
         model: 'gpt-3.5-turbo',
         messages: [{ role: 'user', content: prompt }],
-        max_tokens: 2000
+        max_tokens: 2000,
+        response_format: { type: "json_object" }
       })
     })
 

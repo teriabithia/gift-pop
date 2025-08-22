@@ -23,9 +23,10 @@ interface GiftCardProps {
   isSharedPage?: boolean
   isSelected?: boolean
   onToggleSelection?: (gift: Gift) => void
+  isProcessing?: boolean
 }
 
-export function GiftCard({ gift, showCategoryBadge = true, showTags = false, showActionButtons = true, onAddToList, isSharedPage = false, isSelected = false, onToggleSelection }: GiftCardProps) {
+export function GiftCard({ gift, showCategoryBadge = true, showTags = false, showActionButtons = true, onAddToList, isSharedPage = false, isSelected = false, onToggleSelection, isProcessing = false }: GiftCardProps) {
   const { user } = useAuth()
   const { lists, createList, addGiftToList } = useLists()
   const { toast } = useToast()
@@ -68,7 +69,8 @@ export function GiftCard({ gift, showCategoryBadge = true, showTags = false, sho
       const result = await createList(name, gift)
       toast({
         title: "Success",
-        description: `"${gift.name}" has been added to your new list "${name}"!`,
+        description: `"<span class="font-semibold text-gray-900">${gift.name}</span>" has been added to your new list "<span class="font-semibold text-purple-600">${name}</span>"!`,
+        variant: "success",
       })
       setShowListModal(false)
     } catch (error) {
@@ -89,20 +91,33 @@ export function GiftCard({ gift, showCategoryBadge = true, showTags = false, sho
       if (result.success) {
         toast({
           title: "Success",
-          description: `"${gift.name}" has been added to "${result.listName}"!`,
+          description: `"<span class="font-semibold text-gray-900">${gift.name}</span>" has been added to "<span class="font-semibold text-purple-600">${result.listName}</span>"!`,
+          variant: "success",
         })
         setShowListModal(false)
       } else {
-        toast({
-          title: "Error",
-          description: "Failed to add to list. Please try again.",
-          variant: "destructive",
-        })
+        // 根据result.message判断具体原因
+        const isAlreadyInList = result.message?.includes('already') || result.message?.includes('exists')
+        
+        if (isAlreadyInList) {
+          toast({
+            title: "Already in list",
+            description: `"<span class="font-semibold text-gray-900">${gift.name}</span>" is already in "<span class="font-semibold text-purple-600">${result.listName}</span>".`,
+            variant: "default", // 使用默认样式，不是错误
+          })
+        } else {
+          toast({
+            title: "Unable to add",
+            description: result.message || "Please try again later.",
+            variant: "destructive",
+          })
+        }
       }
     } catch (error) {
+      console.error('Error adding gift to list:', error)
       toast({
-        title: "Error",
-        description: "Failed to add to list. Please try again.",
+        title: "Unable to add",
+        description: "There was an issue adding the gift. Please try again later.",
         variant: "destructive",
       })
     } finally {
@@ -182,15 +197,25 @@ export function GiftCard({ gift, showCategoryBadge = true, showTags = false, sho
             <div className="pt-4 mt-auto">
               <Button
                 onClick={() => onToggleSelection?.(gift)}
+                disabled={isProcessing}
                 className={`w-full h-10 text-sm font-medium transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl ${
                   isSelected
                     ? 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white border-2 border-green-400'
                     : 'bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white'
-                }`}
+                } ${isProcessing ? 'opacity-50 cursor-not-allowed' : ''}`}
                 size="lg"
               >
-                <CheckCircle className="h-4 w-4 mr-2" />
-                {isSelected ? 'Selected' : 'Select This Gift'}
+                {isProcessing ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    {isSelected ? 'Selected' : 'Select This Gift'}
+                  </>
+                )}
               </Button>
             </div>
           ) : showActionButtons ? (

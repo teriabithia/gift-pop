@@ -11,6 +11,7 @@ import { useAuth } from "@/contexts/auth-context"
 import { useLists } from "@/contexts/lists-context"
 import { GiftCard } from "@/components/gift-card"
 import { ListSelectionModal } from "@/components/list-selection-modal"
+import { CreateListModal } from "@/components/create-list-modal"
 import { LoginModal } from "@/components/login-modal"
 import { ShareModal } from "@/components/share-modal"
 import { mockGifts } from "@/lib/mock-data"
@@ -38,8 +39,10 @@ function RecommendationsContent() {
   const occasion = searchParams.get('occasion')
 
   const [showListModal, setShowListModal] = useState(false)
+  const [showCreateModal, setShowCreateModal] = useState(false)
   const [showLoginModal, setShowLoginModal] = useState(false)
   const [showShareModal, setShowShareModal] = useState(false)
+  const [isCreatingList, setIsCreatingList] = useState(false)
   const [selectedGift, setSelectedGift] = useState<Gift | undefined>()
   const [pendingAction, setPendingAction] = useState<"add-to-list" | "create-list" | "share-list" | null>(null)
   // Loading logic state
@@ -256,7 +259,7 @@ function RecommendationsContent() {
     if (pendingAction === "add-to-list" && selectedGift) {
       setShowListModal(true)
     } else if (pendingAction === "create-list") {
-      setShowListModal(true)
+      setShowCreateModal(true)
     } else if (pendingAction === "share-list") {
       handleShareList()
     }
@@ -272,8 +275,9 @@ function RecommendationsContent() {
       toast({
         title: "List created successfully!",
         description: selectedGift 
-          ? `"${name}" has been created and "${selectedGift.name}" has been added to it.`
-          : `"${name}" has been created.`,
+          ? `"<span class="font-semibold text-purple-600">${name}</span>" has been created and "<span class="font-semibold text-gray-900">${selectedGift.name}</span>" has been added to it.`
+          : `"<span class="font-semibold text-purple-600">${name}</span>" has been created.`,
+        variant: "success",
         action: (
           <Button 
             variant="outline" 
@@ -296,15 +300,48 @@ function RecommendationsContent() {
     }
   }
 
+  const handleCreateNewListOnly = async (name: string) => {
+    setIsCreatingList(true)
+    try {
+      await createList(name)
+      
+      toast({
+        title: "List created successfully!",
+        description: `"<span class="font-semibold text-purple-600">${name}</span>" has been created.`,
+        variant: "success",
+        action: (
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => router.push('/my-lists?from=recommendations')}
+            className="ml-2"
+          >
+            View Lists
+          </Button>
+        ),
+      })
+      
+      setShowCreateModal(false)
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to create list. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsCreatingList(false)
+    }
+  }
+
   const handleCreateNewList = () => {
     if (!user) {
       setPendingAction("create-list")
       setShowLoginModal(true)
       return
     }
-    // Directly open create list modal, no need to select gift
+    // Directly open create list modal
     setSelectedGift(undefined)
-    setShowListModal(true)
+    setShowCreateModal(true)
   }
 
   const handleAddToExistingList = async (listId: string, gift?: Gift) => {
@@ -315,7 +352,8 @@ function RecommendationsContent() {
         if (result.success) {
           toast({
             title: "Added to list!",
-            description: result.message,
+            description: `"<span class="font-semibold text-gray-900">${gift.name}</span>" has been added to "<span class="font-semibold text-purple-600">${result.listName}</span>"!`,
+            variant: "success",
             action: (
               <Button 
                 variant="outline" 
@@ -324,14 +362,14 @@ function RecommendationsContent() {
                 className="ml-2"
               >
                 View Lists
-              </Button>
-            ),
-          })
+            </Button>
+          ),
+        })
         } else {
           toast({
-            title: "Item Already in List",
-            description: result.message,
-            variant: "default", // 改为白色背景
+            title: "Already in list",
+            description: `"<span class="font-semibold text-gray-900">${gift.name}</span>" is already in "<span class="font-semibold text-purple-600">${result.listName}</span>".`,
+            variant: "default", // 使用默认样式，不是错误
           })
         }
       } catch (error) {
@@ -490,6 +528,13 @@ function RecommendationsContent() {
         lists={lists}
         onCreateList={handleCreateList}
         onAddToList={handleAddToExistingList}
+      />
+
+      <CreateListModal
+        open={showCreateModal}
+        onOpenChange={setShowCreateModal}
+        onCreateList={handleCreateNewListOnly}
+        isLoading={isCreatingList}
       />
 
       <ShareModal

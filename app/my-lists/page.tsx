@@ -70,7 +70,8 @@ export default function MyListsPage() {
       setShowCreateDialog(false)
       toast({
         title: "List created!",
-        description: `"${newListName}" has been created successfully.`,
+        description: `"<span class="font-semibold text-purple-600">${newListName}</span>" has been created successfully.`,
+        variant: "success",
       })
     } catch (error) {
       toast({
@@ -119,11 +120,13 @@ export default function MyListsPage() {
   }
 
   const handleDeleteList = (listId: string) => {
+    const listToDelete = lists.find(l => l.id === listId)
     deleteList(listId)
     setDeletingList(null)
     toast({
       title: "List deleted",
-      description: "Your list has been deleted successfully.",
+      description: `"<span class="font-semibold text-purple-600">${listToDelete?.name || 'List'}</span>" has been deleted.`,
+      variant: "success",
     })
   }
 

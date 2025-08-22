@@ -1,7 +1,7 @@
 "use client"
 
 import { useParams } from "next/navigation"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -17,6 +17,8 @@ export default function SharedListPage() {
   const [loading, setLoading] = useState(true)
   const [selectedGifts, setSelectedGifts] = useState<Set<string>>(new Set())
   const [isSubmitted, setIsSubmitted] = useState(false)
+  const [processingGifts, setProcessingGifts] = useState<Set<string>>(new Set())
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const { toast } = useToast()
 
   useEffect(() => {
@@ -47,64 +49,118 @@ export default function SharedListPage() {
     fetchSharedList()
   }, [shareId])
 
-  const handleSelectGift = (gift: GiftType) => {
-    if (selectedGifts.has(gift.id)) {
-      // Deselect gift
-      setSelectedGifts(prev => {
+  const handleSelectGift = useCallback(async (gift: GiftType) => {
+    // 防抖：如果正在处理中，直接返回
+    if (processingGifts.has(gift.id)) {
+      return
+    }
+
+    // 设置处理中状态
+    setProcessingGifts(prev => new Set([...prev, gift.id]))
+
+    try {
+      const isCurrentlySelected = selectedGifts.has(gift.id)
+      const newSelectionState = !isCurrentlySelected
+
+      // 调用API设置明确的状态
+      const response = await fetch(`/api/shared/${shareId}/select`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          giftId: gift.id,
+          selectedBy: 'Anonymous',
+          selectionNote: '',
+          action: newSelectionState ? 'select' : 'deselect' // 明确指定动作
+        }),
+      })
+
+      if (response.ok) {
+        // 更新本地状态
+        if (newSelectionState) {
+          setSelectedGifts(prev => new Set([...prev, gift.id]))
+        } else {
+          setSelectedGifts(prev => {
+            const newSet = new Set(prev)
+            newSet.delete(gift.id)
+            return newSet
+          })
+        }
+      } else {
+        const errorData = await response.json()
+        toast({
+          title: "Error updating selection",
+          description: errorData.error || "Please try again later.",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      console.error('Error updating gift selection:', error)
+      toast({
+        title: "Error updating selection",
+        description: "Please try again later.",
+        variant: "destructive",
+      })
+    } finally {
+      // 清除处理中状态
+      setProcessingGifts(prev => {
         const newSet = new Set(prev)
         newSet.delete(gift.id)
         return newSet
       })
-    } else {
-      // Select gift
-      setSelectedGifts(prev => new Set([...prev, gift.id]))
     }
-  }
+  }, [shareId, selectedGifts, processingGifts, toast])
 
   const handleSubmitFinalSelection = async () => {
-    if (selectedGifts.size === 0) {
-      toast({
-        title: "No gifts selected",
-        description: "Please select at least one gift before submitting.",
-        variant: "destructive",
-      })
+    if (selectedGifts.size === 0 || isSubmitting) {
       return
     }
 
+    setIsSubmitting(true)
+
     try {
-      // Submit selections for each gift
-      const promises = Array.from(selectedGifts).map(giftId => {
-        const gift = sharedList?.gifts.find(g => g.id === giftId)
-        if (!gift) return Promise.resolve()
-        
-        return fetch(`/api/shared/${shareId}/select`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            giftId: gift.id,
-            selectedBy: 'Anonymous',
-            selectionNote: '',
-          }),
-        })
+      // 使用新的批量提交接口
+      const response = await fetch(`/api/shared/${shareId}/submit-selection`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          selectedGiftIds: Array.from(selectedGifts),
+          selectedBy: 'Anonymous',
+          selectionNote: '',
+        }),
       })
 
-      await Promise.all(promises)
-
-      // Set submitted state instead of showing toast
-      setIsSubmitted(true)
-
-      // Refresh the shared list to show updated selections
-      const updatedResponse = await fetch(`/api/shared/${shareId}`)
-      if (updatedResponse.ok) {
-        const updatedData = await updatedResponse.json()
-        const listWithDates = {
-          ...updatedData,
-          createdAt: new Date(updatedData.createdAt),
-          updatedAt: new Date(updatedData.updatedAt),
+      if (response.ok) {
+        setIsSubmitted(true)
+        
+        // 显示成功提示
+        toast({
+          title: "Selection submitted successfully!",
+          description: `Your selection of <span class="font-semibold text-gray-900">${selectedGifts.size} gift${selectedGifts.size !== 1 ? 's' : ''}</span> has been submitted to "<span class="font-semibold text-purple-600">${sharedList?.creatorName || 'Anonymous'}</span>"!`,
+          variant: "success",
+        })
+        
+        // 刷新列表显示更新后的选择状态
+        const updatedResponse = await fetch(`/api/shared/${shareId}`)
+        if (updatedResponse.ok) {
+          const updatedData = await updatedResponse.json()
+          const listWithDates = {
+            ...updatedData,
+            createdAt: new Date(updatedData.createdAt),
+            updatedAt: new Date(updatedData.updatedAt),
+          }
+          setSharedList(listWithDates)
         }
-        setSharedList(listWithDates)
+      } else {
+        const errorData = await response.json()
+        toast({
+          title: "Error submitting selection",
+          description: errorData.error || "Please try again later.",
+          variant: "destructive",
+        })
       }
     } catch (error) {
       console.error('Error submitting selection:', error)
@@ -113,6 +169,8 @@ export default function SharedListPage() {
         description: "Please try again later.",
         variant: "destructive",
       })
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -202,6 +260,7 @@ export default function SharedListPage() {
                     isSharedPage={true}
                     isSelected={selectedGifts.has(gift.id)}
                     onToggleSelection={handleSelectGift}
+                    isProcessing={processingGifts.has(gift.id)}
                   />
                 </div>
               ))}
@@ -225,6 +284,7 @@ export default function SharedListPage() {
                       onClick={handleSubmitFinalSelection}
                       size="lg"
                       className="bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white font-bold py-4 px-10 rounded-xl text-lg transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl border-2 border-orange-400"
+                      disabled={isSubmitting}
                     >
                       <CheckCircle className="h-5 w-5 mr-3" />
                       Confirm Selection & Submit

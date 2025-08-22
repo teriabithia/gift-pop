@@ -15,6 +15,7 @@ interface ListSelectionModalProps {
   lists: GiftList[]
   onCreateList: (name: string) => void
   onAddToList: (listId: string, gift?: GiftType) => void
+  createOnly?: boolean // 新增：是否只显示创建新列表
 }
 
 export function ListSelectionModal({
@@ -24,6 +25,7 @@ export function ListSelectionModal({
   lists,
   onCreateList,
   onAddToList,
+  createOnly = false, // 默认显示所有功能
 }: ListSelectionModalProps) {
   const [newListName, setNewListName] = useState("")
   const { toast } = useToast()
@@ -49,11 +51,14 @@ export function ListSelectionModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md max-h-[80vh] rounded-2xl border-gray-100 shadow-[0_25px_50px_rgba(0,0,0,0.25)] p-6 overflow-hidden">
         <DialogHeader className="pb-4">
-          <DialogTitle className="text-xl font-bold">Add to List</DialogTitle>
+          <DialogTitle className="text-xl font-bold">
+            {createOnly ? "Create New List" : "Add to List"}
+          </DialogTitle>
         </DialogHeader>
 
         <div className="flex flex-col h-full">
-          {lists.length > 0 && (
+          {/* 只在非createOnly模式下显示已有列表 */}
+          {!createOnly && lists.length > 0 && (
             <div className="flex-1 min-h-0">
               <h3 className="text-base font-semibold mb-4">Select existing list:</h3>
               <div className="max-h-48 overflow-y-auto space-y-3 pr-2">
@@ -83,8 +88,11 @@ export function ListSelectionModal({
             </div>
           )}
 
-          <div className="mt-6 pt-4 border-t border-gray-200">
-            <h3 className="text-base font-semibold mb-4">Create New List</h3>
+          {/* 创建新列表部分 - 始终显示 */}
+          <div className={`${!createOnly && lists.length > 0 ? 'mt-6 pt-4 border-t border-gray-200' : ''}`}>
+            <h3 className="text-base font-semibold mb-4">
+              {createOnly ? 'Create New List' : 'Create New List'}
+            </h3>
             <div className="space-y-3">
               <Input
                 placeholder="Enter list name"

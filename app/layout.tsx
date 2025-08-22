@@ -5,6 +5,7 @@ import "./globals.css"
 import { Providers } from "@/components/providers"
 import { Navigation } from "@/components/navigation"
 import { Toaster } from "@/components/ui/toaster"
+import Footer from "@/components/footer"
 
 const inter = Inter({
   subsets: ["latin"],
@@ -26,10 +27,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${inter.variable} antialiased`}>
-      <body className="font-sans">
+      <body className="font-sans flex flex-col min-h-screen">
         <Providers>
           <Navigation />
-          <main className="pt-16">{children}</main>
+          <main className="pt-16 flex-1">{children}</main>
+          <Footer />
           <Toaster />
         </Providers>
       </body>

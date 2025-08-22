@@ -128,36 +128,26 @@ Return ONLY valid JSON in this exact format:
  * Generate eBay search keywords for popular gifts
  */
 export function POPULAR_EBAY_SEARCH_PROMPT(context: PopularContext): string {
-  return `You are an expert gift consultant and eBay search strategist. Generate optimized eBay search keywords for finding currently popular and trending gifts.
+  return `Generate eBay search strategy for finding popular, trending gifts.
 
-SEARCH CONTEXT:
-- Target Audience: ${context.target_audience}
-- Budget Range: $${context.budget.min_price} - $${context.budget.max_price} ${context.budget.currency}
-- Quality Requirements: Min ${context.quality_filters.min_rating} stars, ${context.quality_filters.min_reviews}+ reviews
-- Category Distribution: ${Object.entries(context.categories).map(([cat, weight]) => `${cat} (${Math.round(weight * 100)}%)`).join(', ')}
+CONTEXT:
+- Audience: ${context.target_audience}
+- Budget: $${context.budget.min_price} - $${context.budget.max_price}
+- Quality: Min ${context.quality_filters.min_rating} stars, ${context.quality_filters.min_reviews}+ reviews
 
-TASK: Generate eBay search strategy for finding popular, trending gifts that appeal to a broad audience.
-
-IMPORTANT: Use GENERAL PRODUCT CATEGORIES and COMMON TERMS that are likely to have many matches in eBay sandbox.
-
-STRATEGY FOCUS (RELAXED FOR SANDBOX):
-1. Use general product categories (electronics, accessories, books, home decor, etc.)
-2. Mix specific and general terms to maximize matches
-3. Target multiple price points within budget  
-4. Ensure category diversity as specified
-5. Prioritize commonly searched terms (headphones, phone case, watch, bag, etc.)
-
-// 注释掉的严格策略（保留以备将来使用）:
-// 1. Use specific product names and brands (iPhone, Samsung, Nike, etc.)
-// 5. Use concrete product categories (phone case, headphones, watch, etc.)
-
-Return ONLY valid JSON in this exact format:
+Return ONLY valid JSON:
 {
   "search_plan": {
     "primary_keywords": [
       "phone case",
-      "wireless headphones",
-      "smart watch"
+      "wireless headphones", 
+      "smart watch",
+      "home decor",
+      "fragrance gift set",
+      "fitness tracker",
+      "board game",
+      "outdoor gear",
+      "kitchen gadget"
     ],
     "ebay_categories": [
       "Electronics > Consumer Electronics",
@@ -167,14 +157,10 @@ Return ONLY valid JSON in this exact format:
     "filters": {
       "price_range": {"min": ${context.budget.min_price}, "max": ${context.budget.max_price}},
       "condition": ["New"]
-      // 注释掉的严格筛选条件（保留以备将来使用）:
-      // "shipping": ["Fast 'N Free", "Free shipping"],
-      // "seller_rating": "98%+",
-      // "return_policy": "30 days or more"
     },
     "search_strategy": {
       "queries_per_category": 3,
-      "total_candidates_target": 100,  // 增加候选商品数量
+      "total_candidates_target": 100,
       "diversity_requirement": "balanced_categories"
     }
   }
@@ -185,55 +171,33 @@ Return ONLY valid JSON in this exact format:
  * Generate eBay search keywords for occasion-specific gifts
  */
 export function OCCASION_EBAY_SEARCH_PROMPT(context: OccasionContext): string {
-  return `You are an expert gift consultant and eBay search strategist. Generate optimized eBay search keywords for finding gifts perfect for specific occasions.
+  return `Generate eBay search strategy for ${context.occasion_type} gifts.
 
-OCCASION CONTEXT:
+CONTEXT:
 - Occasion: ${context.occasion_type}
-- Target Audience: ${context.audience}
-- Budget Range: $${context.budget.min_price} - $${context.budget.max_price}
-- Style Preferences: ${context.style_preferences.join(', ')}
-- Special Considerations: ${context.practical_considerations ? JSON.stringify(context.practical_considerations) : 'None'}
+- Budget: $${context.budget.min_price} - $${context.budget.max_price}
+- Style: ${context.style_preferences.join(', ')}
 
-TASK: Generate eBay search strategy specifically optimized for ${context.occasion_type} gifts.
-
-OCCASION-SPECIFIC REQUIREMENTS (RELAXED FOR SANDBOX):
-1. Use GENERAL PRODUCT CATEGORIES suitable for the occasion (electronics, jewelry, books, etc.)
-2. Include commonly available items that make good gifts
-3. Consider cultural and seasonal appropriateness
-4. Mix specific and general terms to maximize eBay matches
-5. Focus on gift-appropriate categories with broad availability
-6. Use commonly searched product types available on eBay
-7. Prioritize findable products over perfect specificity
-
-// 注释掉的严格要求（保留以备将来使用）:
-// 1. Use SPECIFIC PRODUCT NAMES suitable for the occasion (not abstract "birthday gifts")
-// 2. Include concrete items commonly given for this occasion
-// 5. Focus on gift-appropriate items (not personal use)
-
-Return ONLY valid JSON in this exact format:
+Return ONLY valid JSON:
 {
   "search_plan": {
     "primary_keywords": [
-      "${context.occasion_type} gifts",
-      "occasion-specific keyword",
-      "another relevant search term"
+      "${context.occasion_type} gift",
+      "celebration item",
+      "special occasion present"
     ],
     "ebay_categories": [
-      "Category suitable for ${context.occasion_type}",
-      "Another appropriate category"
+      "Gifts & Occasions",
+      "Jewelry & Watches",
+      "Home & Garden"
     ],
     "filters": {
       "price_range": {"min": ${context.budget.min_price}, "max": ${context.budget.max_price}},
       "condition": ["New"]
-      // 注释掉的严格筛选条件（保留以备将来使用）:
-      // "condition": ["New", "New with tags"],
-      // "shipping": ["Fast 'N Free", "Free shipping"],
-      // "seller_rating": "98%+",
-      // "return_policy": "30 days or more"
     },
     "search_strategy": {
-      "queries_per_category": 2,
-      "total_candidates_target": 75,  // 增加候选商品数量
+      "queries_per_category": 3,
+      "total_candidates_target": 100,
       "diversity_requirement": "occasion_appropriate"
     }
   }
@@ -248,49 +212,32 @@ export function EBAY_RESULT_ANALYSIS_PROMPT(
   ebayResults: any[],
   maxResults: number = 20
 ): string {
-  return `You are an expert gift curator. Analyze these eBay search results and select the best gifts based on the search context.
+  // 只取前5个商品作为样本，只包含必要信息，减少token使用
+  const sampleProducts = ebayResults.slice(0, 5).map(item => ({
+    id: item.itemId || item.legacyItemId || 'unknown',
+    name: (item.title || 'Unknown Product').substring(0, 40), // 限制标题长度
+    price: item.price?.value || '0'
+  }))
 
-SEARCH CONTEXT: ${searchContext}
+  return `Select the best ${maxResults} gifts from these products.
 
-EBAY RESULTS TO ANALYZE:
-${JSON.stringify(ebayResults.slice(0, 50), null, 2)}
+CONTEXT: ${searchContext}
+TOTAL RESULTS: ${ebayResults.length} items
 
-TASK: Select the top ${maxResults} gifts that best match the search context.
+SAMPLE PRODUCTS (first 5):
+${JSON.stringify(sampleProducts, null, 2)}
 
-EVALUATION CRITERIA:
-1. Relevance to search context and recipient
-2. Price-to-value ratio
-3. Seller reputation and item condition
-4. Gift appropriateness (presentation, packaging)
-5. Uniqueness and thoughtfulness
-6. Practical utility or emotional appeal
-7. Shipping speed and reliability
+TASK: Select ${maxResults} best gifts based on relevance and value.
 
-SELECTION REQUIREMENTS:
-- Maximum ${maxResults} items
-- Diverse price points within budget
-- Mix of different gift types/categories
-- Prioritize highly-rated sellers (98%+)
-- Avoid duplicate or very similar items
-- Consider seasonal appropriateness
-
-Return ONLY valid JSON in this exact format:
+Return ONLY valid JSON:
 {
   "selected_gifts": [
     {
-      "ebay_item_id": "item_id_from_results",
+      "ebay_item_id": "exact_id_from_sample",
       "selection_reason": "Why this gift was selected",
-      "gift_score": 8.5,
-      "match_factors": ["relevance", "value", "quality"]
+      "gift_score": 8.5
     }
-  ],
-  "analysis_summary": {
-    "total_analyzed": ${Math.min(ebayResults.length, 50)},
-    "selected_count": ${maxResults},
-    "average_price": 0,
-    "category_distribution": {},
-    "quality_notes": "Overall quality assessment"
-  }
+  ]
 }`
 }
 

@@ -175,8 +175,9 @@ export default function PopularGiftsPage() {
       toast({
         title: "List created successfully!",
         description: selectedGift 
-          ? `"${name}" has been created and "${selectedGift.name}" has been added to it.`
-          : `"${name}" has been created.`,
+          ? `"<span class="font-semibold text-purple-600">${name}</span>" has been created and "<span class="font-semibold text-gray-900">${selectedGift.name}</span>" has been added to it.`
+          : `"<span class="font-semibold text-purple-600">${name}</span>" has been created.`,
+        variant: "success",
         action: (
           <Button 
             variant="outline" 
@@ -207,7 +208,8 @@ export default function PopularGiftsPage() {
         if (result.success) {
           toast({
             title: "Added to list!",
-            description: result.message,
+            description: `"<span class="font-semibold text-gray-900">${gift.name}</span>" has been added to "<span class="font-semibold text-purple-600">${result.listName}</span>"!`,
+            variant: "success",
             action: (
               <Button 
                 variant="outline" 
@@ -221,9 +223,9 @@ export default function PopularGiftsPage() {
           })
         } else {
           toast({
-            title: "Item Already in List",
-            description: result.message,
-            variant: "default", // 改为白色背景
+            title: "Already in list",
+            description: `"<span class="font-semibold text-gray-900">${gift.name}</span>" is already in "<span class="font-semibold text-purple-600">${result.listName}</span>".`,
+            variant: "default", // 使用默认样式，不是错误
           })
         }
       } catch (error) {

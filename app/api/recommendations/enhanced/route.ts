@@ -50,12 +50,32 @@ export async function POST(request: NextRequest) {
   try {
     // 解析请求体，提取模式和其他参数
     const body = await request.json()
-    const { mode, ...input } = body
+    const { mode, type, ...input } = body
+
+    // 支持 'type' 和 'mode' 参数（向后兼容）
+    const requestMode = mode || type
 
     // 验证必需的mode参数
-    if (!mode) {
+    if (!requestMode) {
       return NextResponse.json(
-        { error: 'Mode is required. Use: personalized, popular, or occasion' },
+        { 
+          error: 'Mode is required. Use: personalized, popular, or occasion',
+          received: { mode, type, body },
+          expected: 'mode: "personalized" | "popular" | "occasion"'
+        },
+        { status: 400 }
+      )
+    }
+
+    // 验证mode值是否有效
+    const validModes = ['personalized', 'popular', 'occasion']
+    if (!validModes.includes(requestMode)) {
+      return NextResponse.json(
+        { 
+          error: `Invalid mode: ${requestMode}`,
+          validModes,
+          received: requestMode
+        },
         { status: 400 }
       )
     }
@@ -64,13 +84,17 @@ export async function POST(request: NextRequest) {
     let source = 'ai-ebay-hybrid'  // 数据来源标识
 
     // 根据不同模式调用相应的推荐服务
-    switch (mode) {
+    switch (requestMode) {
       case 'personalized':
         // 个性化推荐模式
         // 验证个性化推荐的必需参数
         if (!input.answers || !input.answers.relationship) {
           return NextResponse.json(
-            { error: 'Personalized mode requires answers with relationship' },
+            { 
+              error: 'Personalized mode requires answers with relationship',
+              received: input,
+              required: 'answers.relationship'
+            },
             { status: 400 }
           )
         }
@@ -91,7 +115,11 @@ export async function POST(request: NextRequest) {
         // 验证场合推荐的必需参数
         if (!input.occasion) {
           return NextResponse.json(
-            { error: 'Occasion mode requires occasion field' },
+            { 
+              error: 'Occasion mode requires occasion field',
+              received: input,
+              required: 'occasion'
+            },
             { status: 400 }
           )
         }
@@ -104,7 +132,7 @@ export async function POST(request: NextRequest) {
       default:
         // 无效的推荐模式
         return NextResponse.json(
-          { error: `Invalid mode: ${mode}. Use: personalized, popular, or occasion` },
+          { error: `Invalid mode: ${requestMode}. Use: personalized, popular, or occasion` },
           { status: 400 }
         )
     }
@@ -112,7 +140,7 @@ export async function POST(request: NextRequest) {
     // 返回成功响应，包含推荐结果
     return NextResponse.json({
       success: true,           // 请求成功标识
-      mode,                    // 使用的推荐模式
+      mode: requestMode,       // 使用的推荐模式
       data: recommendations,   // 推荐的礼物列表（带真实eBay购买链接）
       count: recommendations.length,  // 推荐礼物的数量
       source,                  // 数据来源：'ai-ebay-hybrid'表示AI+eBay混合策略

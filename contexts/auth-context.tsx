@@ -19,12 +19,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const previousUser = useRef<User | null>(null)
 
   useEffect(() => {
-    if (status !== "loading") {
-      setIsLoading(false)
-    }
     // 如果正在认证过程中，保持loading状态
     if (status === "loading") {
       setIsLoading(true)
+      return
+    }
+    
+    // 如果认证完成，停止loading
+    if (status === "authenticated" || status === "unauthenticated") {
+      setIsLoading(false)
     }
     
     // 强制刷新 session，特别是在页面加载时
@@ -33,34 +36,63 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [status, session])
 
-  // 添加一个定期检查 session 的机制
+  // 只在必要时更新session
   useEffect(() => {
-    const interval = setInterval(async () => {
-      if (status === "unauthenticated" && !session) {
+    let timeoutId: NodeJS.Timeout
+    
+    // 只在loading状态持续较长时间时才强制更新
+    if (status === "loading") {
+      timeoutId = setTimeout(async () => {
         try {
           await update()
         } catch (error) {
-          console.error("Failed to update session:", error)
+          console.error("Failed to force update session:", error)
         }
+      }, 5000) // 增加到5秒，减少频繁更新
+    }
+
+    return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId)
       }
-    }, 2000) // 每2秒检查一次
+    }
+  }, [status, update])
 
-    return () => clearInterval(interval)
-  }, [status, session, update])
-
-  // Debug: Log session data
+  // 检查URL参数，处理Google登录回调（只在组件挂载时执行一次）
   useEffect(() => {
-    console.log("AuthContext - Session status:", status)
-    console.log("AuthContext - Session data:", session)
-    if (session?.user) {
-      console.log("AuthContext - User data:", {
-        id: (session.user as any).id,
-        email: session.user.email,
-        name: session.user.name,
-        image: session.user.image
+    const urlParams = new URLSearchParams(window.location.search)
+    const error = urlParams.get('error')
+    const callbackUrl = urlParams.get('callbackUrl')
+    
+    // 如果有错误，显示错误信息
+    if (error) {
+      console.error("Auth error from URL:", error)
+      toast({
+        title: "Login Error",
+        description: "There was an error during login. Please try again.",
+        variant: "destructive",
       })
     }
-  }, [session, status])
+    
+    // 如果是登录回调，强制更新session
+    if (callbackUrl && status === "loading") {
+      update().catch(console.error)
+    }
+  }, []) // 只在组件挂载时执行一次
+
+  // Debug: Log session data (只在开发环境下显示)
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      if (session?.user) {
+        console.log("AuthContext - User data:", {
+          id: (session.user as any).id,
+          email: session.user.email,
+          name: session.user.name,
+          image: session.user.image
+        })
+      }
+    }
+  }, [session])
 
 
 
@@ -119,9 +151,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const googleLogin = async () => {
     try {
-      // 直接重定向到Google登录，不使用async/await
-      await signIn("google", { callbackUrl: window.location.origin })
+      setIsLoading(true)
+      // 使用callbackUrl确保重定向回当前页面
+      await signIn("google", { 
+        callbackUrl: window.location.href,
+        redirect: true 
+      })
     } catch (error) {
+      setIsLoading(false)
       throw new Error("Google login failed")
     }
   }
@@ -153,9 +190,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     image: session.user.image || "",
   } : null
 
-  // Debug: Log transformed user data
+  // Debug: Log transformed user data (只在开发环境下显示)
   useEffect(() => {
-    console.log("AuthContext - Transformed user:", user)
+    if (process.env.NODE_ENV === 'development' && user) {
+      console.log("AuthContext - Transformed user:", user)
+    }
   }, [user])
 
   // Show login success toast when user logs in

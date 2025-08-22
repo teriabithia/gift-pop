@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useParams } from "next/navigation"
 import Link from "next/link"
@@ -41,11 +41,23 @@ export default function ListDetailPage() {
   const [removingGift, setRemovingGift] = useState<string | null>(null)
   const [showShareModal, setShowShareModal] = useState(false)
 
+  // 使用useEffect处理重定向，避免在渲染过程中调用router.push
+  useEffect(() => {
+    if (!user) {
+      router.push("/")
+    }
+  }, [user, router])
 
-  // Redirect if not logged in or list not found
+  // 如果用户未登录，显示加载状态而不是直接重定向
   if (!user) {
-    router.push("/")
-    return null
+    return (
+      <div className="min-h-screen bg-muted/30 py-8 px-4">
+        <div className="max-w-4xl mx-auto text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    )
   }
 
   if (!list) {
@@ -73,6 +85,7 @@ export default function ListDetailPage() {
         toast({
           title: "Notes saved!",
           description: "Your list notes have been updated.",
+          variant: "success",
         })
       } else {
         toast({
@@ -105,6 +118,7 @@ export default function ListDetailPage() {
     toast({
       title: "Gift removed",
       description: "The gift has been removed from your list.",
+      variant: "success",
     })
   }
 

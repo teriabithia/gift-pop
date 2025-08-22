@@ -207,13 +207,16 @@ export default function OccasionPage() {
     try {
       const result = await createList(name, selectedGift)
       toast({
-        title: "Success!",
-        description: `"${selectedGift.name}" has been added to your new list "${name}"!`,
+        title: "List created successfully!",
+        description: selectedGift 
+          ? `"<span class="font-semibold text-purple-600">${name}</span>" has been created and "<span class="font-semibold text-gray-900">${selectedGift.name}</span>" has been added to it.`
+          : `"<span class="font-semibold text-purple-600">${name}</span>" has been created.`,
+        variant: "success",
         action: (
           <Button 
             variant="outline" 
             size="sm" 
-            onClick={() => router.push("/my-lists")}
+            onClick={() => router.push('/my-lists?from=recommendations')}
             className="ml-2"
           >
             View Lists
@@ -236,13 +239,14 @@ export default function OccasionPage() {
       const result = await addGiftToList(listId, selectedGift)
       if (result.success) {
         toast({
-          title: "Success!",
-          description: `"${selectedGift.name}" has been added to "${result.listName}"!`,
+          title: "Added to list!",
+          description: `"<span class="font-semibold text-gray-900">${selectedGift.name}</span>" has been added to "<span class="font-semibold text-purple-600">${result.listName}</span>"!`,
+          variant: "success",
           action: (
             <Button 
               variant="outline" 
               size="sm" 
-              onClick={() => router.push("/my-lists")}
+              onClick={() => router.push('/my-lists?from=recommendations')}
               className="ml-2"
             >
               View Lists
@@ -252,8 +256,9 @@ export default function OccasionPage() {
         setShowListModal(false)
       } else {
         toast({
-          title: "Already in List",
-          description: result.message || "This item is already in the selected list.",
+          title: "Already in list",
+          description: `"<span class="font-semibold text-gray-900">${selectedGift.name}</span>" is already in "<span class="font-semibold text-purple-600">${result.listName}</span>".`,
+          variant: "default", // 使用默认样式，不是错误
         })
       }
     } catch (error) {

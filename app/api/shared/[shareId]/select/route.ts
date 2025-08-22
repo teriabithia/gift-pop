@@ -7,12 +7,20 @@ export async function POST(
 ) {
   try {
     const { shareId } = await params
-    const { giftId, selectedBy, selectionNote } = await request.json()
+    const { giftId, selectedBy, selectionNote, action } = await request.json()
 
     // 验证必填字段
-    if (!giftId || !selectedBy) {
+    if (!giftId || !selectedBy || !action) {
       return NextResponse.json(
-        { error: "Missing required fields: giftId and selectedBy" },
+        { error: "Missing required fields: giftId, selectedBy, and action" },
+        { status: 400 }
+      )
+    }
+
+    // 验证action值
+    if (!['select', 'deselect'].includes(action)) {
+      return NextResponse.json(
+        { error: "Invalid action. Must be 'select' or 'deselect'" },
         { status: 400 }
       )
     }
@@ -32,7 +40,7 @@ export async function POST(
       )
     }
 
-    // 先检查当前的选择状态
+    // 查找列表项
     const currentItem = await prisma.listItem.findFirst({
       where: {
         listId: sharedList.id,
@@ -47,8 +55,17 @@ export async function POST(
       )
     }
 
-    // 如果已经选择，则取消选择；如果未选择，则选择
-    const newSelectionState = !currentItem.isSelected
+    // 根据action明确设置状态
+    const newSelectionState = action === 'select'
+    
+    // 检查当前状态是否已经是目标状态
+    if (currentItem.isSelected === newSelectionState) {
+      return NextResponse.json({
+        success: true,
+        message: `Gift is already ${newSelectionState ? 'selected' : 'deselected'}`,
+        alreadyInTargetState: true
+      })
+    }
 
     // 更新选择状态
     const updatedItem = await prisma.listItem.update({
@@ -63,16 +80,10 @@ export async function POST(
       },
     })
 
-    if (updatedItem.count === 0) {
-      return NextResponse.json(
-        { error: "Gift not found in list" },
-        { status: 404 }
-      )
-    }
-
     return NextResponse.json({
       success: true,
-      message: "Gift selection updated successfully",
+      message: `Gift ${newSelectionState ? 'selected' : 'deselected'} successfully`,
+      isSelected: newSelectionState
     })
   } catch (error) {
     console.error("Error updating gift selection:", error)
