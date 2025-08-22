@@ -7,7 +7,7 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-white">
       {/* Hero Section */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-white to-gray-50 py-16 px-4 pt-0 pb-20 pb-20 pb-16 pb-14 pb-11 pb-4 pb-5">
+      <section className="relative overflow-hidden bg-gradient-to-br from-white to-gray-50 py-24 px-4 pt-0 pb-28">
         <div className="max-w-5xl mx-auto text-center relative z-10">
           <div className="relative overflow-hidden h-20 mb-6 py-5">
             <div className="absolute top-2 left-0 p-3 bg-purple-primary/10 rounded-2xl animate-roll">
@@ -57,9 +57,9 @@ export default function HomePage() {
       </section>
 
       {/* How It Works Section */}
-      <section className="px-4 bg-transparent py-20">
+      <section className="px-4 bg-transparent py-28">
         <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16">
+          <div className="text-center mb-20">
             <h2 className="text-4xl font-bold text-gray-900 md:text-3xl mb-6">How GiftPop Works</h2>
             <p className="text-gray-600 max-w-3xl mx-auto text-lg">
               Three simple steps to discover the perfect gift for anyone on your list
@@ -116,7 +116,7 @@ export default function HomePage() {
       </section>
 
       {/* Stats Section */}
-      <section className="px-4 relative overflow-hidden bg-white py-20 pt-20 pb-24">
+      <section className="px-4 relative overflow-hidden bg-white py-28">
         <div className="max-w-5xl mx-auto relative z-10">
           <div className="text-center mb-16">
             <h2 className="font-bold text-gray-900 mb-4 text-3xl">Trusted by Gift-Givers Worldwide</h2>
@@ -143,7 +143,7 @@ export default function HomePage() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-24 px-4 relative overflow-hidden min-h-screen bg-gradient-to-b from-[#f7ecff] via-[#fff5ff] to-[#f3f0ff]">
+      <section className="py-24 px-4 relative overflow-hidden bg-gradient-to-b from-[#f7ecff] via-[#fff5ff] to-[#f3f0ff]">
         <div className="pointer-events-none absolute inset-0 blur-[80px] -z-10">
           <div className="absolute -top-24 -left-20 h-[420px] w-[420px] rounded-full bg-[#bda4ff]/45"></div>
           <div className="absolute -top-16 right-12 h-[380px] w-[380px] rounded-full bg-[#ff9ad4]/35"></div>

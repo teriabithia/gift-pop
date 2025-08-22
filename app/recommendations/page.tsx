@@ -210,6 +210,11 @@ function RecommendationsContent() {
     if (wizardData.budgetRange) {
       parts.push(`budget: ${wizardData.budgetRange}`)
     }
+    
+    // Add special preferences (第六个问题)
+    if (wizardData.specialPreferences && wizardData.specialPreferences.trim()) {
+      parts.push(`preferences: ${wizardData.specialPreferences}`)
+    }
 
     const context = parts.join(" • ")
     return `Based on: ${context.charAt(0).toUpperCase() + context.slice(1)}`
@@ -239,7 +244,7 @@ function RecommendationsContent() {
     setShowShareModal(true)
   }
 
-  const handleGenerateShareLink = (listId: string) => {
+  const handleGenerateShareLink = async (listId: string) => {
     const shareLink = `${window.location.origin}/shared/${listId}`
     return shareLink
   }
@@ -259,16 +264,36 @@ function RecommendationsContent() {
     setPendingAction(null)
   }
 
-  const handleCreateList = (name: string) => {
-    const newList = createList(name)
-    if (selectedGift) {
-      const result = addGiftToList(newList.id, selectedGift)
+  const handleCreateList = async (name: string) => {
+    try {
+      // Create list with initial gift if one is selected
+      await createList(name, selectedGift)
+      
       toast({
-        title: "Added to new list!",
-        description: result.message,
+        title: "List created successfully!",
+        description: selectedGift 
+          ? `"${name}" has been created and "${selectedGift.name}" has been added to it.`
+          : `"${name}" has been created.`,
+        action: (
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => router.push('/my-lists?from=recommendations')}
+            className="ml-2"
+          >
+            View Lists
+          </Button>
+        ),
+      })
+      
+      setShowListModal(false)
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to create list. Please try again.",
+        variant: "destructive",
       })
     }
-    setShowListModal(false)
   }
 
   const handleCreateNewList = () => {
@@ -282,20 +307,38 @@ function RecommendationsContent() {
     setShowListModal(true)
   }
 
-  const handleAddToExistingList = (listId: string, gift?: Gift) => {
+  const handleAddToExistingList = async (listId: string, gift?: Gift) => {
     if (gift) {
-      const result = addGiftToList(listId, gift)
-      
-      if (result.success) {
+      try {
+        const result = await addGiftToList(listId, gift)
+        
+        if (result.success) {
+          toast({
+            title: "Added to list!",
+            description: result.message,
+            action: (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => router.push('/my-lists?from=recommendations')}
+                className="ml-2"
+              >
+                View Lists
+              </Button>
+            ),
+          })
+        } else {
+          toast({
+            title: "Item Already in List",
+            description: result.message,
+            variant: "default", // 改为白色背景
+          })
+        }
+      } catch (error) {
         toast({
-          title: "Added to list!",
-          description: result.message,
-        })
-      } else {
-        toast({
-          title: "Item Already in List",
-          description: result.message,
-          variant: "default", // 改为白色背景
+          title: "Error",
+          description: "Failed to add item to list. Please try again.",
+          variant: "destructive",
         })
       }
     }
@@ -374,7 +417,7 @@ function RecommendationsContent() {
               className="animate-in fade-in-0 slide-in-from-bottom-4 duration-500"
               style={{ animationDelay: `${(index % GIFTS_PER_PAGE) * 100}ms` }}
             >
-              <GiftCard gift={gift} onAddToList={handleAddToList} />
+              <GiftCard gift={gift} />
             </div>
           ))}
         </div>

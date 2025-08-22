@@ -120,6 +120,7 @@ model GiftList {
   userId         String    @map("user_id")
   description    String?
   isPublic       Boolean   @default(false) @map("is_public")
+  shareId        String?   @unique @map("share_id")
   shareToken     String?   @unique @map("share_token")
   shareExpiresAt DateTime? @map("share_expires_at")
   metadata       String?   // JSON字符串: {"theme": "birthday", "recipient": "mom"}
@@ -133,6 +134,7 @@ model GiftList {
 
   // 索引
   @@index([userId])
+  @@index([shareId])
   @@index([shareToken])
   @@index([isPublic])
   @@index([createdAt(sort: Desc)])
@@ -147,6 +149,12 @@ model ListItem {
   note       String?
   customData String?  @map("custom_data") // JSON字符串: {"priority": "high", "purchased": false}
   addedAt    DateTime @default(now()) @map("added_at")
+  
+  // 新增字段：收礼物的人的选择
+  isSelected     Boolean  @default(false) @map("is_selected") // 是否被选中
+  selectedBy     String?  @map("selected_by") // 选择者姓名
+  selectionNote  String?  @map("selection_note") // 选择时的留言
+  selectedAt     DateTime? @map("selected_at") // 选择时间
 
   // 关联关系
   giftList GiftList @relation(fields: [listId], references: [id], onDelete: Cascade)
@@ -181,24 +189,32 @@ model QuizAnswer {
 model Recommendation {
   id             String   @id @default(cuid())
   userId         String?  @map("user_id") // 可选，支持匿名用户
-  quizAnswerId   String   @map("quiz_answer_id")
-  giftIds        String   @map("gift_ids") // JSON字符串 推荐的礼品ID数组
+  quizAnswerId   String?  @map("quiz_answer_id") // 可选，支持occasion缓存
+  type           String?  // "quiz" 或 "occasion"
+  occasion       String?  // 用于occasion缓存
+  giftIds        String?  @map("gift_ids") // JSON字符串 推荐的礼品ID数组
+  data           String?  // JSON字符串 完整的商品数据（用于occasion缓存）
   algorithmData  String?  @map("algorithm_data") // JSON字符串: {"version": "v1", "weights": {...}}
   relevanceScore Float    @default(0) @map("relevance_score")
   status         String   @default("active") // active, expired, archived
-  expiresAt      DateTime @map("expires_at")
+  expiresAt      DateTime? @map("expires_at") // 可选，用于occasion缓存
   createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
 
   // 关联关系
   user       User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
-  quizAnswer QuizAnswer @relation(fields: [quizAnswerId], references: [id], onDelete: Cascade)
+  quizAnswer QuizAnswer? @relation(fields: [quizAnswerId], references: [id], onDelete: Cascade)
 
   // 索引
   @@index([userId])
   @@index([quizAnswerId])
+  @@index([type])
+  @@index([occasion])
   @@index([status])
   @@index([expiresAt])
   @@index([createdAt(sort: Desc)])
+  @@index([updatedAt(sort: Desc)])
+  @@unique([type, occasion]) // 确保每个occasion只有一个缓存记录
   @@map("recommendations")
 }
 

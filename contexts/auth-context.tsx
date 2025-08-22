@@ -14,7 +14,7 @@ interface ExtendedAuthState extends AuthState {
 const AuthContext = createContext<ExtendedAuthState | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const { data: session, status } = useSession()
+  const { data: session, status, update } = useSession()
   const [isLoading, setIsLoading] = useState(true)
   const previousUser = useRef<User | null>(null)
 
@@ -26,7 +26,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (status === "loading") {
       setIsLoading(true)
     }
-  }, [status])
+    
+    // 强制刷新 session，特别是在页面加载时
+    if (status === "unauthenticated" && !session) {
+      getSession().catch(console.error)
+    }
+  }, [status, session])
+
+  // 添加一个定期检查 session 的机制
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      if (status === "unauthenticated" && !session) {
+        try {
+          await update()
+        } catch (error) {
+          console.error("Failed to update session:", error)
+        }
+      }
+    }, 2000) // 每2秒检查一次
+
+    return () => clearInterval(interval)
+  }, [status, session, update])
 
   // Debug: Log session data
   useEffect(() => {
@@ -100,7 +120,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const googleLogin = async () => {
     try {
       // 直接重定向到Google登录，不使用async/await
-      signIn("google", { callbackUrl: window.location.origin })
+      await signIn("google", { callbackUrl: window.location.origin })
     } catch (error) {
       throw new Error("Google login failed")
     }

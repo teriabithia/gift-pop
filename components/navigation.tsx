@@ -31,6 +31,12 @@ export function Navigation() {
 
             <div className="hidden md:flex items-center gap-8">
               <Link
+                href="/wizard/step-1"
+                className="text-gray-700 hover:text-purple-primary transition-colors duration-200 font-medium"
+              >
+                AI Gift Finder
+              </Link>
+              <Link
                 href="/popular"
                 className="text-gray-700 hover:text-purple-primary transition-colors duration-200 font-medium"
               >
@@ -64,7 +70,7 @@ export function Navigation() {
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="flex items-center gap-3 p-2 rounded-2xl hover:bg-gray-50">
                       <Avatar className="h-10 w-10 ring-2 ring-purple-primary/20">
-                        <AvatarImage src={user.image || "/placeholder.svg"} alt={user.name} />
+                        <AvatarImage src={user.image || "/placeholder.svg"} alt={user.name || "User avatar"} />
                         <AvatarFallback className="bg-purple-primary/10 text-purple-primary font-semibold">
                           <User className="h-5 w-5" />
                         </AvatarFallback>

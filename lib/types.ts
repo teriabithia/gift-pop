@@ -15,6 +15,7 @@ export interface GiftList {
   isPublic: boolean
   shareId?: string
   specialPreferences?: string
+  creatorName?: string // Add creator's name for shared lists
 }
 
 export interface Gift {
@@ -33,6 +34,11 @@ export interface Gift {
   selectionReason?: string
   giftScore?: number
   matchFactors?: string[]
+  // Gift selection fields
+  isSelected?: boolean
+  selectedBy?: string
+  selectionNote?: string
+  selectedAt?: Date
 }
 
 export interface WizardData {

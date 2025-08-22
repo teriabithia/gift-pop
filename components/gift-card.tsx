@@ -5,26 +5,34 @@ import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Star } from "lucide-react"
+import { Star, CheckCircle } from "lucide-react"
 import type { Gift } from "@/lib/types"
 import { useAuth } from "@/contexts/auth-context"
 import { useToast } from "@/hooks/use-toast"
 import { useLists } from "@/contexts/lists-context"
 import { ShoppingModal } from "./shopping-modal"
+import { ListSelectionModal } from "./list-selection-modal"
+import { LoginModal } from "./login-modal"
 
 interface GiftCardProps {
   gift: Gift
-  onAddToList: (gift: Gift) => void
   showCategoryBadge?: boolean
   showTags?: boolean
+  showActionButtons?: boolean
+  onAddToList?: (gift: Gift) => void
+  isSharedPage?: boolean
+  isSelected?: boolean
+  onToggleSelection?: (gift: Gift) => void
 }
 
-export function GiftCard({ gift, onAddToList, showCategoryBadge = true, showTags = false }: GiftCardProps) {
+export function GiftCard({ gift, showCategoryBadge = true, showTags = false, showActionButtons = true, onAddToList, isSharedPage = false, isSelected = false, onToggleSelection }: GiftCardProps) {
   const { user } = useAuth()
-  const { lists } = useLists()
+  const { lists, createList, addGiftToList } = useLists()
   const { toast } = useToast()
   const [isAdding, setIsAdding] = useState(false)
   const [showShoppingModal, setShowShoppingModal] = useState(false)
+  const [showListModal, setShowListModal] = useState(false)
+  const [showLoginModal, setShowLoginModal] = useState(false)
 
     // 不再检查是否已在清单中，允许重复添加
 
@@ -40,21 +48,61 @@ export function GiftCard({ gift, onAddToList, showCategoryBadge = true, showTags
 
   const handleAddToList = async () => {
     if (!user) {
+      setShowLoginModal(true)
+      return
+    }
+
+    // If parent component provides onAddToList callback, use it
+    if (onAddToList) {
       onAddToList(gift)
       return
     }
 
+    // Otherwise, show the list selection modal
+    setShowListModal(true)
+  }
+
+  const handleCreateNewList = async (name: string) => {
     setIsAdding(true)
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 500))
-
-      // Call the parent handler to show list selection modal
-      onAddToList(gift)
+      const result = await createList(name, gift)
+      toast({
+        title: "Success",
+        description: `"${gift.name}" has been added to your new list "${name}"!`,
+      })
+      setShowListModal(false)
     } catch (error) {
       toast({
         title: "Error",
-        description: "Failed to add item to list. Please try again.",
+        description: "Failed to create list. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsAdding(false)
+    }
+  }
+
+  const handleAddToExistingList = async (listId: string) => {
+    setIsAdding(true)
+    try {
+      const result = await addGiftToList(listId, gift)
+      if (result.success) {
+        toast({
+          title: "Success",
+          description: `"${gift.name}" has been added to "${result.listName}"!`,
+        })
+        setShowListModal(false)
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to add to list. Please try again.",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to add to list. Please try again.",
         variant: "destructive",
       })
     } finally {
@@ -78,7 +126,7 @@ export function GiftCard({ gift, onAddToList, showCategoryBadge = true, showTags
         <div className="aspect-square relative overflow-hidden bg-gray-50 flex-shrink-0">
           <Image
             src={gift.image || "/placeholder.svg"}
-            alt={gift.name}
+            alt={gift.name || `Gift item`}
             fill
             className="object-cover group-hover:scale-105 transition-transform duration-300"
           />
@@ -115,15 +163,10 @@ export function GiftCard({ gift, onAddToList, showCategoryBadge = true, showTags
 
           <div className="flex items-center gap-2 flex-shrink-0 mt-2">
             {gift.rating > 0 ? (
-              <>
-                <div className="flex items-center gap-1">
-                  <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
-                  <span className="text-xs font-medium text-gray-900">{gift.rating}</span>
-                </div>
-                <span className="text-xs text-gray-500">
-                  ({gift.reviewCount > 0 ? gift.reviewCount.toLocaleString() : 0})
-                </span>
-              </>
+              <div className="flex items-center gap-1">
+                <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
+                <span className="text-xs font-medium text-gray-900">{gift.rating.toFixed(1)}</span>
+              </div>
             ) : (
               <span className="text-xs text-gray-400">No rating</span>
             )}
@@ -131,24 +174,41 @@ export function GiftCard({ gift, onAddToList, showCategoryBadge = true, showTags
 
           <div className="flex items-center justify-between flex-shrink-0 mt-3">
             <span className="text-xl font-bold text-purple-600">
-              {gift.price > 0 ? `$${gift.price}` : 'Price not available'}
+              {gift.price > 0 ? `$${gift.price.toFixed(2)}` : 'Price not available'}
             </span>
           </div>
 
-          <div className="flex gap-2 pt-4 mt-auto">
-                              <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={handleAddToList}
-                    disabled={isAdding}
-                    className="flex-1 h-8 text-xs"
-                  >
-                    {isAdding ? "Adding..." : "Add to List"}
-                  </Button>
-            <Button size="sm" onClick={handleShopNow} className="flex-1 h-8 text-xs">
-              Shop Now
-            </Button>
-          </div>
+          {isSharedPage ? (
+            <div className="pt-4 mt-auto">
+              <Button
+                onClick={() => onToggleSelection?.(gift)}
+                className={`w-full h-10 text-sm font-medium transition-all duration-200 transform hover:scale-105 shadow-lg hover:shadow-xl ${
+                  isSelected
+                    ? 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white border-2 border-green-400'
+                    : 'bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white'
+                }`}
+                size="lg"
+              >
+                <CheckCircle className="h-4 w-4 mr-2" />
+                {isSelected ? 'Selected' : 'Select This Gift'}
+              </Button>
+            </div>
+          ) : showActionButtons ? (
+            <div className="flex gap-2 pt-4 mt-auto">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={handleAddToList}
+                disabled={isAdding}
+                className="flex-1 h-8 text-xs"
+              >
+                {isAdding ? "Adding..." : "Add to List"}
+              </Button>
+              <Button size="sm" onClick={handleShopNow} className="flex-1 h-8 text-xs">
+                Shop Now
+              </Button>
+            </div>
+          ) : null}
         </div>
       </CardContent>
       
@@ -156,6 +216,20 @@ export function GiftCard({ gift, onAddToList, showCategoryBadge = true, showTags
         gift={gift}
         isOpen={showShoppingModal}
         onClose={() => setShowShoppingModal(false)}
+      />
+      
+      <ListSelectionModal
+        open={showListModal}
+        onOpenChange={setShowListModal}
+        gift={gift}
+        lists={lists}
+        onCreateList={handleCreateNewList}
+        onAddToList={handleAddToExistingList}
+      />
+      
+      <LoginModal
+        open={showLoginModal}
+        onOpenChange={setShowLoginModal}
       />
     </Card>
   )

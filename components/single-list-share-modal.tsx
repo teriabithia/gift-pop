@@ -1,33 +1,38 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-
-import { Label } from "@/components/ui/label"
 import { CheckCircle, Copy, Share2 } from "lucide-react"
 import type { GiftList } from "@/lib/types"
 import { useToast } from "@/hooks/use-toast"
 
-interface ShareModalProps {
+interface SingleListShareModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  lists: GiftList[]
+  list: GiftList | null
   onGenerateLink: (listId: string) => Promise<string>
 }
 
-export function ShareModal({ open, onOpenChange, lists, onGenerateLink }: ShareModalProps) {
-  const [selectedListId, setSelectedListId] = useState("")
-  const [step, setStep] = useState<"select" | "success">("select")
+export function SingleListShareModal({ open, onOpenChange, list, onGenerateLink }: SingleListShareModalProps) {
+  const [step, setStep] = useState<"loading" | "success">("loading")
   const [generatedLink, setGeneratedLink] = useState("")
   const [linkCopied, setLinkCopied] = useState(false)
   const { toast } = useToast()
 
+  // Generate link when modal opens
+  useEffect(() => {
+    if (open && list) {
+      handleGenerateLink()
+    }
+  }, [open, list])
+
   const handleGenerateLink = async () => {
-    if (!selectedListId) return
+    if (!list) return
 
     try {
-      const shareLink = await onGenerateLink(selectedListId)
+      setStep("loading")
+      const shareLink = await onGenerateLink(list.id)
       setGeneratedLink(shareLink)
 
       // Copy to clipboard
@@ -43,6 +48,7 @@ export function ShareModal({ open, onOpenChange, lists, onGenerateLink }: ShareM
         description: "Failed to generate share link. Please try again.",
         variant: "destructive",
       })
+      onOpenChange(false)
     }
   }
 
@@ -62,70 +68,28 @@ export function ShareModal({ open, onOpenChange, lists, onGenerateLink }: ShareM
     onOpenChange(false)
     // Reset state when modal closes
     setTimeout(() => {
-      setStep("select")
-      setSelectedListId("")
+      setStep("loading")
       setGeneratedLink("")
       setLinkCopied(false)
     }, 200)
   }
 
-  const selectedList = lists.find((list) => list.id === selectedListId)
+  if (!list) return null
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-md w-full rounded-2xl border-gray-100 shadow-[0_25px_50px_rgba(0,0,0,0.25)] p-6">
-        {step === "select" ? (
+        {step === "loading" ? (
           <>
-            <DialogHeader className="pb-2">
+            <DialogHeader className="pb-4">
               <DialogTitle className="text-lg font-bold">Share Gift List</DialogTitle>
               <DialogDescription className="text-sm text-muted-foreground">
-                Choose a list to share with others
+                Generating shareable link for "{list.name}"...
               </DialogDescription>
             </DialogHeader>
 
-            <div className="space-y-4">
-              <div className="space-y-3">
-                <Label className="text-xs font-medium text-foreground">Select a list to share</Label>
-
-                {lists.length > 0 ? (
-                  <div className="space-y-2">
-                    {lists.map((list) => (
-                      <div
-                        key={list.id}
-                        className={`p-3 border-2 rounded-lg cursor-pointer transition-colors ${
-                          selectedListId === list.id
-                            ? "border-purple-500 bg-purple-50"
-                            : "border-gray-200 hover:border-purple-200"
-                        }`}
-                        onClick={() => setSelectedListId(list.id)}
-                      >
-                        <div className="font-medium text-sm text-foreground">{list.name}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {list.gifts.length} {list.gifts.length === 1 ? "item" : "items"}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-6">
-                    <p className="text-sm text-muted-foreground">No lists available to share</p>
-                  </div>
-                )}
-              </div>
-
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={handleClose} className="flex-1 bg-transparent h-9 text-sm">
-                  Cancel
-                </Button>
-                <Button
-                  onClick={handleGenerateLink}
-                  disabled={!selectedListId}
-                  className="flex-1 bg-purple-600 hover:bg-purple-700 text-white h-9 text-sm"
-                >
-                  <Share2 className="h-3 w-3 mr-1" />
-                  Generate Link
-                </Button>
-              </div>
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
             </div>
           </>
         ) : (
@@ -133,7 +97,7 @@ export function ShareModal({ open, onOpenChange, lists, onGenerateLink }: ShareM
             <DialogHeader className="pb-2">
               <DialogTitle className="text-lg font-bold">Share Gift List</DialogTitle>
               <DialogDescription className="text-sm text-muted-foreground">
-                Your shareable link is ready!
+                Your shareable link for "{list.name}" is ready!
               </DialogDescription>
             </DialogHeader>
 
@@ -143,6 +107,14 @@ export function ShareModal({ open, onOpenChange, lists, onGenerateLink }: ShareM
                 <div className="flex items-center gap-2 text-green-700">
                   <CheckCircle className="h-4 w-4" />
                   <span className="font-medium text-sm">Link copied to clipboard!</span>
+                </div>
+              </div>
+
+              {/* List Info */}
+              <div className="bg-muted/50 rounded-lg p-3">
+                <div className="font-medium text-sm text-foreground">{list.name}</div>
+                <div className="text-xs text-muted-foreground">
+                  {list.gifts.length} {list.gifts.length === 1 ? "item" : "items"} • Now Public
                 </div>
               </div>
 
@@ -180,3 +152,5 @@ export function ShareModal({ open, onOpenChange, lists, onGenerateLink }: ShareM
     </Dialog>
   )
 }
+
+

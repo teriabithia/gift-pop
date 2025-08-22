@@ -35,28 +35,28 @@ export function ListSelectionModal({
 
   const handleCreateNewList = () => {
     if (!newListName.trim()) return
+    
+    // Call parent's create list handler which handles both creation and adding gift
     onCreateList(newListName.trim())
+    
     onOpenChange(false)
     setNewListName("")
 
-    toast({
-      title: "List created successfully!",
-      description: `"${newListName.trim()}" has been created${gift ? ` and "${gift.name}" has been added to it` : ""}.`,
-    })
+    // Remove toast from here since parent component will handle it
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md rounded-2xl border-gray-100 shadow-[0_25px_50px_rgba(0,0,0,0.25)] p-6">
+      <DialogContent className="sm:max-w-md max-h-[80vh] rounded-2xl border-gray-100 shadow-[0_25px_50px_rgba(0,0,0,0.25)] p-6 overflow-hidden">
         <DialogHeader className="pb-4">
           <DialogTitle className="text-xl font-bold">Add to List</DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6">
+        <div className="flex flex-col h-full">
           {lists.length > 0 && (
-            <div className="space-y-4">
-              <h3 className="text-base font-semibold">Select existing list:</h3>
-              <div className="space-y-3">
+            <div className="flex-1 min-h-0">
+              <h3 className="text-base font-semibold mb-4">Select existing list:</h3>
+              <div className="max-h-48 overflow-y-auto space-y-3 pr-2">
                 {lists.map((list) => (
                   <div
                     key={list.id}
@@ -83,8 +83,8 @@ export function ListSelectionModal({
             </div>
           )}
 
-          <div className="space-y-4">
-            <h3 className="text-base font-semibold">Create New List</h3>
+          <div className="mt-6 pt-4 border-t border-gray-200">
+            <h3 className="text-base font-semibold mb-4">Create New List</h3>
             <div className="space-y-3">
               <Input
                 placeholder="Enter list name"
