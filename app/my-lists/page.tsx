@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -35,7 +35,7 @@ import { formatDistanceToNow } from "date-fns"
 import { ShareModal } from "@/components/share-modal"
 import { SingleListShareModal } from "@/components/single-list-share-modal"
 
-export default function MyListsPage() {
+function MyListsPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { user } = useAuth()
@@ -419,5 +419,20 @@ export default function MyListsPage() {
         />
       </div>
     </div>
+  )
+}
+
+export default function MyListsPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 py-12 px-4">
+        <div className="max-w-7xl mx-auto text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    }>
+      <MyListsPageContent />
+    </Suspense>
   )
 }
