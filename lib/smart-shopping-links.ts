@@ -10,7 +10,7 @@ export interface ShoppingOption {
 export function generateSmartShoppingLinks(gift: Gift): ShoppingOption[] {
   const productName = `${gift.name} ${gift.brand}`.trim()
   const encodedName = encodeURIComponent(productName)
-  const category = gift.category.toLowerCase()
+  const category = gift.category?.toLowerCase() || 'general'
 
   const options: ShoppingOption[] = []
 

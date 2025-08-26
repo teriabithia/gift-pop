@@ -1,13 +1,84 @@
+"use client"
+
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { MessageCircle, Heart, Share2, Gift, Sparkles, Users } from "lucide-react"
+import { useState, useEffect } from "react"
+
+// Dynamic Relationship Component with timer-like rolling text effect
+function DynamicRelationship() {
+  const relationships = [
+    "Mom", "Dad", "Wife", "Husband", "Sister", "Brother", 
+    "Daughter", "Son", "Grandmother", "Grandfather", 
+    "Girlfriend", "Boyfriend", "Friend", "Colleague", 
+    "Teacher", "Boss"
+  ]
+  
+  const [currentIndex, setCurrentIndex] = useState(0)
+  const [isTransitioning, setIsTransitioning] = useState(false)
+  
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const nextIndex = (currentIndex + 1) % relationships.length
+      
+      // 如果是最后一个，先瞬间重置到第一个
+      if (currentIndex === relationships.length - 1) {
+        setIsTransitioning(false)
+        setCurrentIndex(0)
+        // 立即开始下一个循环
+        setTimeout(() => {
+          setIsTransitioning(true)
+          setCurrentIndex(1)
+        }, 50)
+      } else {
+        setCurrentIndex(nextIndex)
+      }
+    }, 2500) // Change every 2.5 seconds
+    
+    return () => clearInterval(interval)
+  }, [currentIndex])
+  
+  // 初始化时启用过渡
+  useEffect(() => {
+    setIsTransitioning(true)
+  }, [])
+  
+  return (
+    <span className="inline-block min-w-[140px] h-[1.2em] relative overflow-hidden">
+      <div 
+        className={`flex flex-col ${isTransitioning ? 'transition-transform duration-700 ease-in-out' : ''}`}
+        style={{
+          transform: `translateY(-${currentIndex * 1.2}em)`
+        }}
+      >
+        {/* 重复列表以实现无缝循环 */}
+        {[...relationships, ...relationships].map((relationship, index) => (
+          <span 
+            key={index}
+            className="font-extrabold text-5xl leading-none h-[1.2em] flex items-center justify-center text-purple-600"
+          >
+            {relationship}
+          </span>
+        ))}
+      </div>
+    </span>
+  )
+}
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen bg-white">
+    <>
+      <div className="min-h-screen bg-white">
       {/* Hero Section */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-white to-gray-50 py-16 px-4 pt-0 pb-20 pb-20 pb-16 pb-14 pb-11 pb-4 pb-5">
+      <section className="relative overflow-hidden py-24 px-4 pt-0 pb-28">
+        {/* 多层渐变背景 */}
+        <div className="absolute inset-0 bg-gradient-to-br from-sky-blue-50 via-purple-50 to-pink-50"></div>
+        <div className="absolute inset-0 bg-gradient-to-tr from-lavender-100/20 via-transparent to-pink-100/15"></div>
+        <div className="absolute inset-0 bg-gradient-to-bl from-purple-100/15 via-transparent to-white"></div>
+        <div className="absolute inset-0 bg-gradient-to-r from-sky-blue-100/25 via-transparent to-indigo-100/20"></div>
+        <div className="absolute inset-0 bg-gradient-to-t from-cyan-100/20 via-transparent to-sky-blue-100/15"></div>
+        
         <div className="max-w-5xl mx-auto text-center relative z-10">
           <div className="relative overflow-hidden h-20 mb-6 py-5">
             <div className="absolute top-2 left-0 p-3 bg-purple-primary/10 rounded-2xl animate-roll">
@@ -16,11 +87,13 @@ export default function HomePage() {
           </div>
 
           <h1 className="font-bold text-gray-900 mb-6 leading-tight text-5xl">
-            Find the <span className="text-purple-primary font-extrabold">Perfect Gift</span>
-            <span className="text-gray-900 block">Every Time</span>
+            <div className="text-center">
+              <div>Find the <span className="text-gray-900 font-extrabold">Perfect Gift</span> for</div>
+              <div><DynamicRelationship /></div>
+            </div>
           </h1>
 
-          <p className="text-gray-600 max-w-3xl mx-auto leading-relaxed text-lg mb-16">
+          <p className="text-gray-600 max-w-3xl mx-auto leading-relaxed text-lg mb-16 mt-12">
             Let our AI-powered recommendations help you discover thoughtful gifts that will make your loved ones smile.
             No more guessing, just perfect presents.
           </p>
@@ -33,6 +106,7 @@ export default function HomePage() {
           </Link>
         </div>
 
+        {/* 装饰性色块 */}
         <div className="absolute top-20 left-10 opacity-20 animate-bounce" style={{ animationDuration: "3s" }}>
           <Gift className="h-16 w-16 text-purple-primary rotate-12" />
         </div>
@@ -54,12 +128,35 @@ export default function HomePage() {
         >
           <Users className="h-8 w-8 text-purple-primary rotate-45" />
         </div>
+        
+        {/* 背景色块（静态） */}
+        <div className="absolute top-16 right-16 w-40 h-32 bg-gradient-to-br from-sky-blue-300/55 to-blue-200/45 rounded-[100px] blur-xl"></div>
+        <div className="absolute top-24 right-8 w-48 h-36 bg-gradient-to-tr from-purple-200/60 to-pink-100/50 rounded-[120px] blur-xl"></div>
+        <div className="absolute top-40 right-32 w-44 h-28 bg-gradient-to-bl from-pink-200/65 to-purple-100/55 rounded-[80px] blur-xl"></div>
+        <div className="absolute top-48 right-24 w-36 h-40 bg-gradient-to-tl from-blue-100/60 to-indigo-100/50 rounded-[90px] blur-xl"></div>
+        
+
+        
+        <div className="absolute top-1/3 left-16 w-52 h-44 bg-gradient-to-br from-sky-blue-200/65 to-cyan-100/55 rounded-[140px] blur-xl"></div>
+        <div className="absolute top-1/2 left-8 w-40 h-36 bg-gradient-to-tl from-purple-100/65 to-violet-100/55 rounded-[100px] blur-xl"></div>
+        <div className="absolute top-2/3 left-24 w-48 h-32 bg-gradient-to-tr from-pink-100/70 to-rose-100/60 rounded-[110px] blur-xl"></div>
+        <div className="absolute top-3/4 left-12 w-44 h-40 bg-gradient-to-bl from-indigo-100/60 to-blue-100/50 rounded-[130px] blur-xl"></div>
+        
+        <div className="absolute bottom-32 right-16 w-36 h-44 bg-gradient-to-tl from-sky-blue-100/70 to-blue-50/60 rounded-[95px] blur-xl"></div>
+        <div className="absolute bottom-40 right-8 w-52 h-28 bg-gradient-to-br from-purple-200/60 to-pink-100/50 rounded-[85px] blur-xl"></div>
+        <div className="absolute bottom-48 right-24 w-40 h-36 bg-gradient-to-tr from-pink-200/75 to-purple-100/65 rounded-[105px] blur-xl"></div>
+        <div className="absolute bottom-24 right-32 w-48 h-32 bg-gradient-to-bl from-cyan-100/65 to-sky-blue-100/55 rounded-[115px] blur-xl"></div>
+        
+        <div className="absolute top-1/4 right-1/3 w-44 h-36 bg-gradient-to-br from-sky-blue-200/65 to-blue-100/55 rounded-[125px] blur-xl"></div>
+        <div className="absolute top-1/2 right-1/4 w-32 h-40 bg-gradient-to-tl from-purple-100/70 to-violet-100/60 rounded-[135px] blur-xl"></div>
+        <div className="absolute top-3/4 right-1/3 w-40 h-44 bg-gradient-to-tr from-pink-100/60 to-rose-100/50 rounded-[145px] blur-xl"></div>
+        <div className="absolute top-1/3 right-1/4 w-36 h-32 bg-gradient-to-bl from-violet-100/65 to-purple-100/55 rounded-[85px] blur-xl"></div>
       </section>
 
       {/* How It Works Section */}
-      <section className="px-4 bg-transparent py-20">
+      <section className="px-4 bg-transparent py-28">
         <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16">
+          <div className="text-center mb-20">
             <h2 className="text-4xl font-bold text-gray-900 md:text-3xl mb-6">How GiftPop Works</h2>
             <p className="text-gray-600 max-w-3xl mx-auto text-lg">
               Three simple steps to discover the perfect gift for anyone on your list
@@ -116,7 +213,7 @@ export default function HomePage() {
       </section>
 
       {/* Stats Section */}
-      <section className="px-4 relative overflow-hidden bg-white py-20 pt-20 pb-24">
+      <section className="px-4 relative overflow-hidden bg-white py-28">
         <div className="max-w-5xl mx-auto relative z-10">
           <div className="text-center mb-16">
             <h2 className="font-bold text-gray-900 mb-4 text-3xl">Trusted by Gift-Givers Worldwide</h2>
@@ -143,7 +240,7 @@ export default function HomePage() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-24 px-4 relative overflow-hidden min-h-screen bg-gradient-to-b from-[#f7ecff] via-[#fff5ff] to-[#f3f0ff]">
+      <section className="py-24 px-4 relative overflow-hidden bg-gradient-to-b from-[#f7ecff] via-[#fff5ff] to-[#f3f0ff]">
         <div className="pointer-events-none absolute inset-0 blur-[80px] -z-10">
           <div className="absolute -top-24 -left-20 h-[420px] w-[420px] rounded-full bg-[#bda4ff]/45"></div>
           <div className="absolute -top-16 right-12 h-[380px] w-[380px] rounded-full bg-[#ff9ad4]/35"></div>
@@ -319,5 +416,6 @@ export default function HomePage() {
         </div>
       </section>
     </div>
+    </>
   )
 }

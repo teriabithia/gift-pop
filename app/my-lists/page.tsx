@@ -1,7 +1,7 @@
 "use client"
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useState, Suspense } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -27,18 +27,23 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { Plus, List, MoreVertical, Share2, Edit, Trash2, Calendar, Gift } from "lucide-react"
+import { Plus, List, MoreVertical, Share2, Edit, Trash2, Calendar, Gift, ArrowLeft } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 import { useLists } from "@/contexts/lists-context"
 import { useToast } from "@/hooks/use-toast"
 import { formatDistanceToNow } from "date-fns"
 import { ShareModal } from "@/components/share-modal"
+import { SingleListShareModal } from "@/components/single-list-share-modal"
 
-export default function MyListsPage() {
+function MyListsPageContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { user } = useAuth()
   const { lists, createList, updateList, deleteList, generateShareLink } = useLists()
   const { toast } = useToast()
+
+  // Check if user came from recommendations
+  const fromRecommendations = searchParams.get('from') === 'recommendations'
 
   const [showCreateDialog, setShowCreateDialog] = useState(false)
   const [newListName, setNewListName] = useState("")
@@ -46,6 +51,7 @@ export default function MyListsPage() {
   const [editName, setEditName] = useState("")
   const [deletingList, setDeletingList] = useState<string | null>(null)
   const [showShareModal, setShowShareModal] = useState(false)
+  const [sharingList, setSharingList] = useState<string | null>(null)
 
   // Redirect if not logged in
   if (!user) {
@@ -55,52 +61,72 @@ export default function MyListsPage() {
     return null
   }
 
-  const handleCreateList = () => {
+  const handleCreateList = async () => {
     if (!newListName.trim()) return
 
-    createList(newListName.trim())
-    setNewListName("")
-    setShowCreateDialog(false)
-    toast({
-      title: "List created!",
-      description: `"${newListName}" has been created successfully.`,
-    })
+    try {
+      await createList(newListName.trim()) // No initial gift for direct list creation
+      setNewListName("")
+      setShowCreateDialog(false)
+      toast({
+        title: "List created!",
+        description: `"<span class="font-semibold text-purple-600">${newListName}</span>" has been created successfully.`,
+        variant: "success",
+      })
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to create list. Please try again.",
+        variant: "destructive",
+      })
+    }
   }
 
-  const handleRenameList = (listId: string) => {
+  const handleRenameList = async (listId: string) => {
     if (!editName.trim()) return
 
-    updateList(listId, { name: editName.trim() })
-    setEditingList(null)
-    setEditName("")
-    toast({
-      title: "List renamed!",
-      description: "Your list has been renamed successfully.",
-    })
+    try {
+      const result = await updateList(listId, { name: editName.trim() })
+      if (result.success) {
+        setEditingList(null)
+        setEditName("")
+        toast({
+          title: "List renamed!",
+          description: "Your list has been renamed successfully.",
+        })
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to rename list. Please try again.",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to rename list. Please try again.",
+        variant: "destructive",
+      })
+    }
   }
 
   const handleShareList = (listId: string) => {
-    const shareLink = generateShareLink(listId)
-    navigator.clipboard.writeText(shareLink)
-    
-    const list = lists.find(l => l.id === listId)
-    toast({
-      title: "Share Link Copied!",
-      description: `Share link for "${list?.name}" has been copied to clipboard.`,
-    })
+    setSharingList(listId)
   }
 
-  const handleGenerateShareLink = (listId: string) => {
-    const shareLink = generateShareLink(listId)
+  const handleGenerateShareLink = async (listId: string) => {
+    const shareLink = await generateShareLink(listId)
     return shareLink
   }
 
   const handleDeleteList = (listId: string) => {
+    const listToDelete = lists.find(l => l.id === listId)
     deleteList(listId)
     setDeletingList(null)
     toast({
       title: "List deleted",
-      description: "Your list has been deleted successfully.",
+      description: `"<span class="font-semibold text-purple-600">${listToDelete?.name || 'List'}</span>" has been deleted.`,
+      variant: "success",
     })
   }
 
@@ -120,6 +146,20 @@ export default function MyListsPage() {
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4">
       <div className="max-w-7xl mx-auto">
+        {/* 条件性返回按钮 - 只在从推荐页面进入时显示 */}
+        {fromRecommendations && (
+          <div className="mb-6">
+            <Button
+              variant="ghost"
+              onClick={() => router.back()}
+              className="flex items-center gap-2 text-gray-600 hover:text-gray-900 p-0 h-auto font-normal"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back to Recommendations
+            </Button>
+          </div>
+        )}
+
         <div className="flex flex-col lg:justify-between mb-12 gap-6 animate-in fade-in-0 slide-in-from-bottom-4 duration-700 lg:flex-row lg:items-end">
           <div className="text-center lg:text-left">
             <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4 leading-tight lg:text-3xl">
@@ -369,7 +409,30 @@ export default function MyListsPage() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Single List Share Modal */}
+        <SingleListShareModal
+          open={!!sharingList}
+          onOpenChange={(open) => !open && setSharingList(null)}
+          list={sharingList ? lists.find(l => l.id === sharingList) || null : null}
+          onGenerateLink={handleGenerateShareLink}
+        />
       </div>
     </div>
+  )
+}
+
+export default function MyListsPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 py-12 px-4">
+        <div className="max-w-7xl mx-auto text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    }>
+      <MyListsPageContent />
+    </Suspense>
   )
 }

@@ -13,7 +13,7 @@ interface ShareModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   lists: GiftList[]
-  onGenerateLink: (listId: string) => string
+  onGenerateLink: (listId: string) => Promise<string>
 }
 
 export function ShareModal({ open, onOpenChange, lists, onGenerateLink }: ShareModalProps) {
@@ -23,19 +23,27 @@ export function ShareModal({ open, onOpenChange, lists, onGenerateLink }: ShareM
   const [linkCopied, setLinkCopied] = useState(false)
   const { toast } = useToast()
 
-  const handleGenerateLink = () => {
+  const handleGenerateLink = async () => {
     if (!selectedListId) return
 
-    const shareLink = onGenerateLink(selectedListId)
-    setGeneratedLink(shareLink)
+    try {
+      const shareLink = await onGenerateLink(selectedListId)
+      setGeneratedLink(shareLink)
 
-    // Copy to clipboard
-    navigator.clipboard.writeText(shareLink)
-    setLinkCopied(true)
-    setStep("success")
+      // Copy to clipboard
+      navigator.clipboard.writeText(shareLink)
+      setLinkCopied(true)
+      setStep("success")
 
-    // Reset copied state after 3 seconds
-    setTimeout(() => setLinkCopied(false), 3000)
+      // Reset copied state after 3 seconds
+      setTimeout(() => setLinkCopied(false), 3000)
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to generate share link. Please try again.",
+        variant: "destructive",
+      })
+    }
   }
 
   const handleCopyLink = () => {
@@ -65,7 +73,7 @@ export function ShareModal({ open, onOpenChange, lists, onGenerateLink }: ShareM
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-sm rounded-2xl border-gray-100 shadow-[0_25px_50px_rgba(0,0,0,0.25)] p-6">
+      <DialogContent className="sm:max-w-md w-full rounded-2xl border-gray-100 shadow-[0_25px_50px_rgba(0,0,0,0.25)] p-6">
         {step === "select" ? (
           <>
             <DialogHeader className="pb-2">
@@ -140,17 +148,17 @@ export function ShareModal({ open, onOpenChange, lists, onGenerateLink }: ShareM
 
               {/* Generated Link */}
               <div className="space-y-2">
-                <div className="flex items-center justify-between p-2 bg-muted rounded-lg border min-w-0">
-                  <span className="text-xs font-mono text-foreground truncate flex-1 mr-2 min-w-0">
+                <div className="flex items-center justify-between p-3 bg-muted rounded-lg border min-w-0">
+                  <span className="text-sm font-mono text-foreground break-all flex-1 mr-3 min-w-0 leading-relaxed">
                     {generatedLink}
                   </span>
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={handleCopyLink}
-                    className="h-6 w-6 p-0 text-primary hover:text-primary/80 flex-shrink-0"
+                    className="h-8 w-8 p-0 text-primary hover:text-primary/80 flex-shrink-0"
                   >
-                    <Copy className="h-3 w-3" />
+                    <Copy className="h-4 w-4" />
                   </Button>
                 </div>
 

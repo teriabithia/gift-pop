@@ -2,7 +2,7 @@ export interface User {
   id: string
   email: string
   name: string
-  avatar?: string
+  image?: string
 }
 
 export interface GiftList {
@@ -15,6 +15,7 @@ export interface GiftList {
   isPublic: boolean
   shareId?: string
   specialPreferences?: string
+  creatorName?: string // Add creator's name for shared lists
 }
 
 export interface Gift {
@@ -29,6 +30,15 @@ export interface Gift {
   searchTerm?: string // AI生成的搜索关键词
   category?: string
   tags?: string[] | string // 支持数组或JSON字符串格式
+  // OpenAI analysis fields
+  selectionReason?: string
+  giftScore?: number
+  matchFactors?: string[]
+  // Gift selection fields
+  isSelected?: boolean
+  selectedBy?: string
+  selectionNote?: string
+  selectedAt?: Date
 }
 
 export interface WizardData {

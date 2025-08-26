@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { TrendingUp, Plus, Share2, Sparkles, Loader2 } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
@@ -15,6 +16,7 @@ import type { Gift } from "@/lib/types"
 
 
 export default function PopularGiftsPage() {
+  const router = useRouter()
   const { user } = useAuth()
   const { lists, addGiftToList, createList } = useLists()
   const { toast } = useToast()
@@ -165,32 +167,72 @@ export default function PopularGiftsPage() {
     setPendingAction(null)
   }
 
-  const handleCreateList = (name: string) => {
-    // 创建新清单并添加商品
-    const newList = createList(name)
-    if (selectedGift) {
-      const result = addGiftToList(newList.id, selectedGift)
+  const handleCreateList = async (name: string) => {
+    try {
+      // Create list with initial gift if one is selected
+      await createList(name, selectedGift)
+      
       toast({
-        title: "Added to new list!",
-        description: result.message,
+        title: "List created successfully!",
+        description: selectedGift 
+          ? `"<span class="font-semibold text-purple-600">${name}</span>" has been created and "<span class="font-semibold text-gray-900">${selectedGift.name}</span>" has been added to it.`
+          : `"<span class="font-semibold text-purple-600">${name}</span>" has been created.`,
+        variant: "success",
+        action: (
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => router.push('/my-lists?from=recommendations')}
+            className="ml-2"
+          >
+            View Lists
+          </Button>
+        ),
+      })
+      
+      setShowListModal(false)
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to create list. Please try again.",
+        variant: "destructive",
       })
     }
   }
 
-  const handleAddToExistingList = (listId: string, gift?: Gift) => {
+  const handleAddToExistingList = async (listId: string, gift?: Gift) => {
     if (gift) {
-      const result = addGiftToList(listId, gift)
-      
-      if (result.success) {
+      try {
+        const result = await addGiftToList(listId, gift)
+        
+        if (result.success) {
+          toast({
+            title: "Added to list!",
+            description: `"<span class="font-semibold text-gray-900">${gift.name}</span>" has been added to "<span class="font-semibold text-purple-600">${result.listName}</span>"!`,
+            variant: "success",
+            action: (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => router.push('/my-lists?from=recommendations')}
+                className="ml-2"
+              >
+                View Lists
+              </Button>
+            ),
+          })
+        } else {
+          toast({
+            title: "Already in list",
+            description: `"<span class="font-semibold text-gray-900">${gift.name}</span>" is already in "<span class="font-semibold text-purple-600">${result.listName}</span>".`,
+            variant: "default", // 使用默认样式，不是错误
+          })
+        }
+      } catch (error) {
         toast({
-          title: "Added to list!",
-          description: result.message,
-        })
-      } else {
-        toast({
-          title: "Item Already in List",
-          description: result.message,
-          variant: "default", // 改为白色背景
+          title: "Error",
+          description: "Failed to add item to list. Please try again.",
+          variant: "destructive",
         })
       }
     }
@@ -225,7 +267,6 @@ export default function PopularGiftsPage() {
             >
               <GiftCard 
                 gift={gift} 
-                onAddToList={handleAddToList} 
                 showCategoryBadge={false} 
                 showTags={true}
               />

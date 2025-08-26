@@ -10,8 +10,12 @@ import { LoginModal } from "./login-modal"
 import { Gift, LogOut, User } from "lucide-react"
 
 export function Navigation() {
-  const { user, logout } = useAuth()
+  const { user, logout, isLoading } = useAuth()
   const [showLoginModal, setShowLoginModal] = useState(false)
+  
+  // Debug: Log user data in Navigation
+  console.log("Navigation - User data:", user)
+  console.log("Navigation - isLoading:", isLoading)
 
   return (
     <>
@@ -26,6 +30,12 @@ export function Navigation() {
             </Link>
 
             <div className="hidden md:flex items-center gap-8">
+              <Link
+                href="/wizard/step-1"
+                className="text-gray-700 hover:text-purple-primary transition-colors duration-200 font-medium"
+              >
+                AI Gift Finder
+              </Link>
               <Link
                 href="/popular"
                 className="text-gray-700 hover:text-purple-primary transition-colors duration-200 font-medium"
@@ -60,7 +70,7 @@ export function Navigation() {
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" className="flex items-center gap-3 p-2 rounded-2xl hover:bg-gray-50">
                       <Avatar className="h-10 w-10 ring-2 ring-purple-primary/20">
-                        <AvatarImage src={user.avatar || "/placeholder.svg"} alt={user.name} />
+                        <AvatarImage src={user.image || "/placeholder.svg"} alt={user.name || "User avatar"} />
                         <AvatarFallback className="bg-purple-primary/10 text-purple-primary font-semibold">
                           <User className="h-5 w-5" />
                         </AvatarFallback>
@@ -78,6 +88,13 @@ export function Navigation() {
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
+              ) : isLoading ? (
+                <Button disabled size="lg" className="shadow-lg opacity-60 cursor-not-allowed">
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
+                    Loading...
+                  </div>
+                </Button>
               ) : (
                 <Button onClick={() => setShowLoginModal(true)} size="lg" className="shadow-lg">
                   Login

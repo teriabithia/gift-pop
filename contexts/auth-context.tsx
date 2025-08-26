@@ -1,54 +1,119 @@
 "use client"
 
-import { createContext, useContext, useState, useEffect, type ReactNode } from "react"
+import { createContext, useContext, useState, useEffect, type ReactNode, useRef } from "react"
+import { useSession, signIn, signOut, getSession } from "next-auth/react"
 import type { User, AuthState } from "@/lib/types"
+import { toast } from "@/hooks/use-toast"
 
 interface ExtendedAuthState extends AuthState {
   googleLogin: () => Promise<void>
   resetPassword: (email: string) => Promise<void>
+  register: (email: string, password: string, name: string) => Promise<void>
 }
 
 const AuthContext = createContext<ExtendedAuthState | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
+  const { data: session, status, update } = useSession()
   const [isLoading, setIsLoading] = useState(true)
+  const previousUser = useRef<User | null>(null)
 
   useEffect(() => {
-    // Check for existing session on mount
-    const savedUser = localStorage.getItem("giftpop-user")
-    if (savedUser) {
-      try {
-        setUser(JSON.parse(savedUser))
-      } catch (error) {
-        console.error("Failed to parse saved user:", error)
-        localStorage.removeItem("giftpop-user")
+    // 如果正在认证过程中，保持loading状态
+    if (status === "loading") {
+      setIsLoading(true)
+      return
+    }
+    
+    // 如果认证完成，停止loading
+    if (status === "authenticated" || status === "unauthenticated") {
+      setIsLoading(false)
+    }
+    
+    // 强制刷新 session，特别是在页面加载时
+    if (status === "unauthenticated" && !session) {
+      getSession().catch(console.error)
+    }
+  }, [status, session])
+
+  // 只在必要时更新session
+  useEffect(() => {
+    let timeoutId: NodeJS.Timeout
+    
+    // 只在loading状态持续较长时间时才强制更新
+    if (status === "loading") {
+      timeoutId = setTimeout(async () => {
+        try {
+          await update()
+        } catch (error) {
+          console.error("Failed to force update session:", error)
+        }
+      }, 5000) // 增加到5秒，减少频繁更新
+    }
+
+    return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId)
       }
     }
-    setIsLoading(false)
-  }, [])
+  }, [status, update])
+
+  // 检查URL参数，处理Google登录回调（只在组件挂载时执行一次）
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search)
+    const error = urlParams.get('error')
+    const callbackUrl = urlParams.get('callbackUrl')
+    
+    // 如果有错误，显示错误信息
+    if (error) {
+      console.error("Auth error from URL:", error)
+      toast({
+        title: "Login Error",
+        description: "There was an error during login. Please try again.",
+        variant: "destructive",
+      })
+    }
+    
+    // 如果是登录回调，强制更新session
+    if (callbackUrl && status === "loading") {
+      update().catch(console.error)
+    }
+  }, []) // 只在组件挂载时执行一次
+
+  // Debug: Log session data (只在开发环境下显示)
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      if (session?.user) {
+        console.log("AuthContext - User data:", {
+          id: (session.user as any).id,
+          email: session.user.email,
+          name: session.user.name,
+          image: session.user.image
+        })
+      }
+    }
+  }, [session])
+
+
 
   const login = async (email: string, password: string) => {
     setIsLoading(true)
     try {
-      // Simulate API call delay
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      const result = await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
+      })
 
-      // Mock login validation
-      if (email === "demo@giftpop.com" && password === "password") {
-        const mockUser: User = {
-          id: "1",
-          email,
-          name: "Demo User",
-          avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}`,
-        }
-        setUser(mockUser)
-        localStorage.setItem("giftpop-user", JSON.stringify(mockUser))
-      } else {
-        throw new Error("Invalid credentials")
+      if (result?.error) {
+        throw new Error(result.error)
+      }
+
+      if (!result?.ok) {
+        throw new Error("Login failed")
       }
     } catch (error) {
-      throw new Error("Login failed")
+      throw new Error("Invalid credentials")
     } finally {
       setIsLoading(false)
     }
@@ -57,43 +122,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const register = async (email: string, password: string, name: string) => {
     setIsLoading(true)
     try {
-      // Simulate API call delay
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      const response = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password, name }),
+      })
 
-      // Mock registration - replace with real authentication
-      const mockUser: User = {
-        id: Date.now().toString(),
-        email,
-        name,
-        avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}`,
+      const data = await response.json()
+
+      if (!response.ok) {
+        throw new Error(data.error || "Registration failed")
       }
-      setUser(mockUser)
-      localStorage.setItem("giftpop-user", JSON.stringify(mockUser))
+
+      // After successful registration, sign in the user
+      await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
+      })
     } catch (error) {
-      throw new Error("Registration failed")
+      throw new Error(error instanceof Error ? error.message : "Registration failed")
     } finally {
       setIsLoading(false)
     }
   }
 
   const googleLogin = async () => {
-    setIsLoading(true)
     try {
-      // Simulate Google OAuth flow
-      await new Promise((resolve) => setTimeout(resolve, 1500))
-
-      const mockGoogleUser: User = {
-        id: "google_" + Date.now(),
-        email: "user@gmail.com",
-        name: "Google User",
-        avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=google",
-      }
-      setUser(mockGoogleUser)
-      localStorage.setItem("giftpop-user", JSON.stringify(mockGoogleUser))
+      setIsLoading(true)
+      // 使用callbackUrl确保重定向回当前页面
+      await signIn("google", { 
+        callbackUrl: window.location.href,
+        redirect: true 
+      })
     } catch (error) {
-      throw new Error("Google login failed")
-    } finally {
       setIsLoading(false)
+      throw new Error("Google login failed")
     }
   }
 
@@ -113,9 +179,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const logout = () => {
-    setUser(null)
-    localStorage.removeItem("giftpop-user")
+    signOut({ redirect: false })
   }
+
+  // Transform NextAuth session to our User type
+  const user: User | null = session?.user ? {
+    id: (session.user as any).id || session.user.email || "",
+    email: session.user.email || "",
+    name: session.user.name || "",
+    image: session.user.image || "",
+  } : null
+
+  // Debug: Log transformed user data (只在开发环境下显示)
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development' && user) {
+      console.log("AuthContext - Transformed user:", user)
+    }
+  }, [user])
+
+  // Show login success toast when user logs in
+  useEffect(() => {
+    // 如果之前没有用户，现在有用户了，说明刚刚登录成功
+    if (!previousUser.current && user && status === "authenticated") {
+      toast({
+        title: "Welcome!",
+        description: `Hello ${user.name || user.email}! You've successfully logged in.`,
+      })
+    }
+    previousUser.current = user
+  }, [user, status])
 
   return (
     <AuthContext.Provider

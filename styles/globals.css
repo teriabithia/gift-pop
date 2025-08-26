@@ -121,3 +121,92 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* 自定义动态背景动画 - 以中心为圆心的漩涡流动 */
+@keyframes vortex-flow {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes vortex-flow-reverse {
+  0% {
+    transform: rotate(360deg);
+  }
+  100% {
+    transform: rotate(0deg);
+  }
+}
+
+@keyframes vortex-float {
+  0% {
+    transform: rotate(0deg) scale(1);
+  }
+  25% {
+    transform: rotate(90deg) scale(1.1);
+  }
+  50% {
+    transform: rotate(180deg) scale(0.9);
+  }
+  75% {
+    transform: rotate(270deg) scale(1.05);
+  }
+  100% {
+    transform: rotate(360deg) scale(1);
+  }
+}
+
+@keyframes vortex-float-reverse {
+  0% {
+    transform: rotate(360deg) scale(1);
+  }
+  25% {
+    transform: rotate(270deg) scale(0.9);
+  }
+  50% {
+    transform: rotate(180deg) scale(1.1);
+  }
+  75% {
+    transform: rotate(90deg) scale(0.95);
+  }
+  100% {
+    transform: rotate(0deg) scale(1);
+  }
+}
+
+.animate-vortex-flow {
+  animation: vortex-flow 8s linear infinite;
+  transform-origin: center center;
+}
+
+.animate-vortex-flow-reverse {
+  animation: vortex-flow-reverse 10s linear infinite;
+  transform-origin: center center;
+}
+
+.animate-vortex-float {
+  animation: vortex-float 6s ease-in-out infinite;
+  transform-origin: center center;
+}
+
+.animate-vortex-float-reverse {
+  animation: vortex-float-reverse 7s ease-in-out infinite;
+  transform-origin: center center;
+}
+
+/* 测试动画 - 确保动画能工作 */
+@keyframes test-rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-test-rotate {
+  animation: test-rotate 3s linear infinite;
+}

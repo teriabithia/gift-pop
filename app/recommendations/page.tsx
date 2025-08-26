@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -11,6 +11,7 @@ import { useAuth } from "@/contexts/auth-context"
 import { useLists } from "@/contexts/lists-context"
 import { GiftCard } from "@/components/gift-card"
 import { ListSelectionModal } from "@/components/list-selection-modal"
+import { CreateListModal } from "@/components/create-list-modal"
 import { LoginModal } from "@/components/login-modal"
 import { ShareModal } from "@/components/share-modal"
 import { mockGifts } from "@/lib/mock-data"
@@ -19,6 +20,14 @@ import { recommendationAPI } from "@/lib/api/recommendations"
 import type { Gift, GiftList } from "@/lib/types"
 
 export default function RecommendationsPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <RecommendationsContent />
+    </Suspense>
+  )
+}
+
+function RecommendationsContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { data: wizardData, resetData } = useWizard()
@@ -30,8 +39,10 @@ export default function RecommendationsPage() {
   const occasion = searchParams.get('occasion')
 
   const [showListModal, setShowListModal] = useState(false)
+  const [showCreateModal, setShowCreateModal] = useState(false)
   const [showLoginModal, setShowLoginModal] = useState(false)
   const [showShareModal, setShowShareModal] = useState(false)
+  const [isCreatingList, setIsCreatingList] = useState(false)
   const [selectedGift, setSelectedGift] = useState<Gift | undefined>()
   const [pendingAction, setPendingAction] = useState<"add-to-list" | "create-list" | "share-list" | null>(null)
   // Loading logic state
@@ -41,8 +52,6 @@ export default function RecommendationsPage() {
   const [page, setPage] = useState(0)
   
   const GIFTS_PER_PAGE = 24
-
-
 
   const [apiGifts, setApiGifts] = useState<Gift[]>([])
   const [apiLoaded, setApiLoaded] = useState(false)
@@ -64,12 +73,24 @@ export default function RecommendationsPage() {
         })
       } else if (wizardData.relationship || wizardData.interests?.length) {
         // Personalized recommendations
+        // Parse budget range from string to object
+        let budget: { min: number; max: number } | undefined
+        if (wizardData.budgetRange) {
+          const match = wizardData.budgetRange.match(/\$(\d+)\s*-\s*\$(\d+)/)
+          if (match) {
+            budget = {
+              min: parseInt(match[1]),
+              max: parseInt(match[2])
+            }
+          }
+        }
+
         const preferences = {
           relationship: wizardData.relationship,
           gender: wizardData.gender,
           ageRange: wizardData.ageRange,
           interests: wizardData.interests,
-          budget: wizardData.budgetRange,
+          budget: budget,
           specialPreferences: wizardData.specialPreferences
         }
         gifts = await recommendationAPI.getPersonalizedRecommendations(preferences)
@@ -192,6 +213,11 @@ export default function RecommendationsPage() {
     if (wizardData.budgetRange) {
       parts.push(`budget: ${wizardData.budgetRange}`)
     }
+    
+    // Add special preferences (第六个问题)
+    if (wizardData.specialPreferences && wizardData.specialPreferences.trim()) {
+      parts.push(`preferences: ${wizardData.specialPreferences}`)
+    }
 
     const context = parts.join(" • ")
     return `Based on: ${context.charAt(0).toUpperCase() + context.slice(1)}`
@@ -201,8 +227,6 @@ export default function RecommendationsPage() {
     resetData()
     router.push("/wizard/step-1")
   }
-
-
 
   const handleShareList = () => {
     if (!user) {
@@ -223,7 +247,7 @@ export default function RecommendationsPage() {
     setShowShareModal(true)
   }
 
-  const handleGenerateShareLink = (listId: string) => {
+  const handleGenerateShareLink = async (listId: string) => {
     const shareLink = `${window.location.origin}/shared/${listId}`
     return shareLink
   }
@@ -235,7 +259,7 @@ export default function RecommendationsPage() {
     if (pendingAction === "add-to-list" && selectedGift) {
       setShowListModal(true)
     } else if (pendingAction === "create-list") {
-      setShowListModal(true)
+      setShowCreateModal(true)
     } else if (pendingAction === "share-list") {
       handleShareList()
     }
@@ -243,16 +267,70 @@ export default function RecommendationsPage() {
     setPendingAction(null)
   }
 
-  const handleCreateList = (name: string) => {
-    const newList = createList(name)
-    if (selectedGift) {
-      const result = addGiftToList(newList.id, selectedGift)
+  const handleCreateList = async (name: string) => {
+    try {
+      // Create list with initial gift if one is selected
+      await createList(name, selectedGift)
+      
       toast({
-        title: "Added to new list!",
-        description: result.message,
+        title: "List created successfully!",
+        description: selectedGift 
+          ? `"<span class="font-semibold text-purple-600">${name}</span>" has been created and "<span class="font-semibold text-gray-900">${selectedGift.name}</span>" has been added to it.`
+          : `"<span class="font-semibold text-purple-600">${name}</span>" has been created.`,
+        variant: "success",
+        action: (
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => router.push('/my-lists?from=recommendations')}
+            className="ml-2"
+          >
+            View Lists
+          </Button>
+        ),
+      })
+      
+      setShowListModal(false)
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to create list. Please try again.",
+        variant: "destructive",
       })
     }
-    setShowListModal(false)
+  }
+
+  const handleCreateNewListOnly = async (name: string) => {
+    setIsCreatingList(true)
+    try {
+      await createList(name)
+      
+      toast({
+        title: "List created successfully!",
+        description: `"<span class="font-semibold text-purple-600">${name}</span>" has been created.`,
+        variant: "success",
+        action: (
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => router.push('/my-lists?from=recommendations')}
+            className="ml-2"
+          >
+            View Lists
+          </Button>
+        ),
+      })
+      
+      setShowCreateModal(false)
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to create list. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsCreatingList(false)
+    }
   }
 
   const handleCreateNewList = () => {
@@ -261,25 +339,44 @@ export default function RecommendationsPage() {
       setShowLoginModal(true)
       return
     }
-    // Directly open create list modal, no need to select gift
+    // Directly open create list modal
     setSelectedGift(undefined)
-    setShowListModal(true)
+    setShowCreateModal(true)
   }
 
-  const handleAddToExistingList = (listId: string, gift?: Gift) => {
+  const handleAddToExistingList = async (listId: string, gift?: Gift) => {
     if (gift) {
-      const result = addGiftToList(listId, gift)
-      
-      if (result.success) {
-        toast({
-          title: "Added to list!",
-          description: result.message,
+      try {
+        const result = await addGiftToList(listId, gift)
+        
+        if (result.success) {
+          toast({
+            title: "Added to list!",
+            description: `"<span class="font-semibold text-gray-900">${gift.name}</span>" has been added to "<span class="font-semibold text-purple-600">${result.listName}</span>"!`,
+            variant: "success",
+            action: (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => router.push('/my-lists?from=recommendations')}
+                className="ml-2"
+              >
+                View Lists
+            </Button>
+          ),
         })
-      } else {
+        } else {
+          toast({
+            title: "Already in list",
+            description: `"<span class="font-semibold text-gray-900">${gift.name}</span>" is already in "<span class="font-semibold text-purple-600">${result.listName}</span>".`,
+            variant: "default", // 使用默认样式，不是错误
+          })
+        }
+      } catch (error) {
         toast({
-          title: "Item Already in List",
-          description: result.message,
-          variant: "default", // 改为白色背景
+          title: "Error",
+          description: "Failed to add item to list. Please try again.",
+          variant: "destructive",
         })
       }
     }
@@ -358,7 +455,7 @@ export default function RecommendationsPage() {
               className="animate-in fade-in-0 slide-in-from-bottom-4 duration-500"
               style={{ animationDelay: `${(index % GIFTS_PER_PAGE) * 100}ms` }}
             >
-              <GiftCard gift={gift} onAddToList={handleAddToList} />
+              <GiftCard gift={gift} />
             </div>
           ))}
         </div>
@@ -431,6 +528,13 @@ export default function RecommendationsPage() {
         lists={lists}
         onCreateList={handleCreateList}
         onAddToList={handleAddToExistingList}
+      />
+
+      <CreateListModal
+        open={showCreateModal}
+        onOpenChange={setShowCreateModal}
+        onCreateList={handleCreateNewListOnly}
+        isLoading={isCreatingList}
       />
 
       <ShareModal

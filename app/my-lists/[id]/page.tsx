@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useParams } from "next/navigation"
 import Link from "next/link"
@@ -18,11 +18,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { ArrowLeft, Share2, Edit, Plus, ExternalLink, X } from "lucide-react"
+import { ArrowLeft, Share2, Edit, Plus, ExternalLink, X, Star, CheckCircle, MessageCircle } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 import { useLists } from "@/contexts/lists-context"
 import { useToast } from "@/hooks/use-toast"
 import { formatDistanceToNow } from "date-fns"
+import { SingleListShareModal } from "@/components/single-list-share-modal"
 
 
 export default function ListDetailPage() {
@@ -38,12 +39,25 @@ export default function ListDetailPage() {
   const [isEditing, setIsEditing] = useState(false)
   const [notes, setNotes] = useState(list?.specialPreferences || "")
   const [removingGift, setRemovingGift] = useState<string | null>(null)
+  const [showShareModal, setShowShareModal] = useState(false)
 
+  // 使用useEffect处理重定向，避免在渲染过程中调用router.push
+  useEffect(() => {
+    if (!user) {
+      router.push("/")
+    }
+  }, [user, router])
 
-  // Redirect if not logged in or list not found
+  // 如果用户未登录，显示加载状态而不是直接重定向
   if (!user) {
-    router.push("/")
-    return null
+    return (
+      <div className="min-h-screen bg-muted/30 py-8 px-4">
+        <div className="max-w-4xl mx-auto text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    )
   }
 
   if (!list) {
@@ -63,29 +77,38 @@ export default function ListDetailPage() {
     )
   }
 
-  const handleSaveNotes = () => {
-    updateList(listId, { specialPreferences: notes })
-    setIsEditing(false)
-    toast({
-      title: "Notes saved!",
-      description: "Your list notes have been updated.",
-    })
+  const handleSaveNotes = async () => {
+    try {
+      const result = await updateList(listId, { specialPreferences: notes })
+      if (result.success) {
+        setIsEditing(false)
+        toast({
+          title: "Notes saved!",
+          description: "Your list notes have been updated.",
+          variant: "success",
+        })
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to save notes. Please try again.",
+          variant: "destructive",
+        })
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to save notes. Please try again.",
+        variant: "destructive",
+      })
+    }
   }
 
   const handleShare = () => {
-    if (!list) return
-    
-    // 直接生成分享链接，不显示模态框
-    const shareLink = generateShareLink(list.id)
-    navigator.clipboard.writeText(shareLink)
-    toast({
-      title: "Link copied!",
-      description: "Share link has been copied to your clipboard.",
-    })
+    setShowShareModal(true)
   }
 
-  const handleGenerateShareLink = (listId: string) => {
-    const shareLink = generateShareLink(listId)
+  const handleGenerateShareLink = async (listId: string) => {
+    const shareLink = await generateShareLink(listId)
     return shareLink
   }
 
@@ -95,6 +118,7 @@ export default function ListDetailPage() {
     toast({
       title: "Gift removed",
       description: "The gift has been removed from your list.",
+      variant: "success",
     })
   }
 
@@ -184,7 +208,14 @@ export default function ListDetailPage() {
         {/* Gifts Section */}
         <div className="space-y-6">
           <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-semibold">Gifts in this list</h2>
+            <div className="flex items-center gap-3">
+              <h2 className="text-2xl font-semibold">Gifts in this list</h2>
+              {list.gifts.some(gift => gift.isSelected) && (
+                <Badge variant="secondary" className="bg-emerald-100 text-emerald-700 border-emerald-200">
+                  {list.gifts.filter(gift => gift.isSelected).length} selected
+                </Badge>
+              )}
+            </div>
             <Link href="/popular">
               <Button variant="outline">
                 <Plus className="h-4 w-4 mr-2" />
@@ -198,13 +229,24 @@ export default function ListDetailPage() {
               {list.gifts.map((gift) => (
                 <Card
                   key={gift.id}
-                  className="group hover:shadow-lg transition-all duration-300 hover:border-primary/50"
+                  className={`group hover:shadow-lg transition-all duration-300 hover:border-primary/50 relative ${
+                    gift.isSelected ? 'ring-2 ring-emerald-200 ring-offset-2' : ''
+                  }`}
                 >
-                  <CardContent className="p-4">
-                    <div className="aspect-square relative mb-4 overflow-hidden rounded-lg bg-muted">
+                  {/* Selection Indicator */}
+                  {gift.isSelected && (
+                    <div className="absolute -top-2 -right-2 z-10">
+                      <div className="w-6 h-6 bg-gradient-to-r from-emerald-500 to-green-500 rounded-full flex items-center justify-center shadow-lg">
+                        <CheckCircle className="h-4 w-4 text-white" />
+                      </div>
+                    </div>
+                  )}
+                  
+                  <CardContent className="p-3">
+                    <div className="aspect-square relative mb-3 overflow-hidden rounded-lg bg-muted">
                       <img
                         src={gift.image || "/placeholder.svg"}
-                        alt={gift.name}
+                        alt={gift.name || `Gift item`}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       />
                       <Button
@@ -222,18 +264,20 @@ export default function ListDetailPage() {
                       )}
                     </div>
 
-                    <div className="space-y-3">
+                    <div className="space-y-2.5">
                       <div>
                         <p className="text-sm text-muted-foreground font-medium">{gift.brand}</p>
                         <h3 className="font-semibold text-foreground line-clamp-2 leading-tight">{gift.name}</h3>
                       </div>
 
                       <div className="flex items-center justify-between">
-                        <span className="text-lg font-bold text-primary">${gift.price}</span>
-                        <div className="flex items-center gap-1">
-                          <span className="text-sm font-medium">{gift.rating}</span>
-                          <span className="text-sm text-muted-foreground">({gift.reviewCount})</span>
-                        </div>
+                        <span className="text-lg font-bold text-primary">${gift.price.toFixed(2)}</span>
+                        {gift.rating > 0 && (
+                          <div className="flex items-center gap-1">
+                            <Star className="h-3.5 w-3.5 fill-yellow-400 text-yellow-400" />
+                            <span className="text-xs font-medium">{gift.rating.toFixed(1)}</span>
+                          </div>
+                        )}
                       </div>
 
                       <Button
@@ -244,6 +288,37 @@ export default function ListDetailPage() {
                         <ExternalLink className="h-4 w-4 mr-2" />
                         Shop Now
                       </Button>
+
+                      {/* Selection Status */}
+                      {gift.isSelected && (
+                        <div className="mt-2.5 space-y-1.5">
+                          {/* Selection Info */}
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-emerald-600 font-medium">
+                              ✓ Selected by {gift.selectedBy}
+                            </span>
+                            {gift.selectedAt && (
+                              <span className="text-gray-500">
+                                {new Date(gift.selectedAt).toLocaleDateString()}
+                              </span>
+                            )}
+                          </div>
+                          
+                          {/* Selection Note */}
+                          {gift.selectionNote && (
+                            <div className="p-1.5 bg-blue-50 border-l-3 border-blue-300 rounded-r-md">
+                              <div className="flex items-start gap-2">
+                                <MessageCircle className="h-3 w-3 text-blue-500 mt-0.5 flex-shrink-0" />
+                                <p className="text-xs text-blue-700 leading-relaxed italic">
+                                  "{gift.selectionNote}"
+                                </p>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      
+
                     </div>
                   </CardContent>
                 </Card>
@@ -289,6 +364,14 @@ export default function ListDetailPage() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Share Modal */}
+        <SingleListShareModal
+          open={showShareModal}
+          onOpenChange={setShowShareModal}
+          list={list}
+          onGenerateLink={handleGenerateShareLink}
+        />
       </div>
     </div>
   )
